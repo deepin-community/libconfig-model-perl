@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Backend::PerlFile 2.145;
+package Config::Model::Backend::PerlFile;
 
 use 5.10.1;
 use Carp;
@@ -75,18 +66,6 @@ sub write {
 # ABSTRACT: Read and write config as a Perl data structure
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Backend::PerlFile - Read and write config as a Perl data structure
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -202,17 +181,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>,
 L<Config::Model::BackendMgr>,
 L<Config::Model::Backend::Any>,
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

@@ -1,0 +1,35 @@
+Description: Remove git from dzil config
+ Git config is suitable for upstream, but does not work
+ when building the package
+Forwarded: not-needed
+Author: Dod
+--- a/dist.ini
++++ b/dist.ini
+@@ -19,20 +19,6 @@
+ [NextRelease]
+ format = %v%T %{yyyy-MM-dd}d
+ 
+-; use 'V=2.234 dzil release' to override version number
+-[Git::NextVersion]
+-
+-[Git::Check]
+-allow_dirty = dist.ini
+-allow_dirty = Changes
+-
+-[Git::Commit]
+-
+-[Git::Tag]
+-signed = 1
+-
+-[Git::Push]
+-
+ [MetaJSON]
+ 
+ [AutoPrereqs]
+@@ -105,6 +91,3 @@
+ [Run::BeforeRelease]
+ run = perl -I lib -MConfig::Model::Utils::GenClassPod -e 'gen_class_pod();'
+ 
+-[Test::Perl::Critic]
+-
+-[Signature]

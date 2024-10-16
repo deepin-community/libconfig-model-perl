@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Backend::PlainFile 2.145;
+package Config::Model::Backend::PlainFile;
 
 use 5.10.1;
 use Carp;
@@ -65,7 +56,7 @@ sub read {
         my $dir = $self->get_tuned_config_dir(%args);
         my $file = $dir->child($file_name);
 
-        $logger->trace("looking for plainfile $file for ", $obj->location);
+        $logger->trace("looking to read plainfile $file for ", $obj->location);
 
         my $type = $obj->get_type;
 
@@ -144,6 +135,8 @@ sub write {
         my $file_name = $self->get_file_name(%args, elt => $elt);
         my $file = $dir->child($file_name);
 
+        $logger->trace("looking to write plainfile $file for ", $obj->location);
+
         my $type = $obj->get_type;
         my @v;
 
@@ -209,18 +202,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Read and write config as plain file
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Backend::PlainFile - Read and write config as plain file
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -341,17 +322,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>, 
 L<Config::Model::BackendMgr>, 
 L<Config::Model::Backend::Any>, 
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Role::Grab 2.145;
+package Config::Model::Role::Grab;
 
 # ABSTRACT: Role to grab data from elsewhere in the tree
 
@@ -65,6 +56,8 @@ sub grab ($self, @args) {
 
     # accept commands, grep remove empty items left by spurious spaces
     my $huge_string = ref $steps ? join( ' ', @$steps ) : $steps;
+    return $self unless $huge_string;
+
     my @command = (
         $huge_string =~ m/
          (         # begin of *one* command
@@ -182,6 +175,7 @@ COMMAND:
                     object   => $obj,
                     element  => $name,
                     function => 'grab',
+                    autoadd  => $autoadd,
                     info     => "grab called from '" . $self->name . "' with steps '@saved'"
                 );
             }
@@ -280,16 +274,15 @@ sub grab_value ($self, @args) {
 
     return if ( $args{mode} and $args{mode} eq 'loose' and not defined $obj );
 
-    Config::Model::Exception::User->throw(
-        object  => $self,
-        message => "grab_value: cannot get value of non-leaf or check_list "
-            . "item with '"
-            . join( "' '", @args )
-            . "'. item is $obj"
-        )
-        unless ref $obj
-        and ( $obj->isa("Config::Model::Value")
-        or $obj->isa("Config::Model::CheckList") );
+    if (not $obj->isa("Config::Model::Value")
+        and not $obj->isa("Config::Model::CheckList")
+    ) {
+        Config::Model::Exception::User->throw(
+            object  => $self,
+            message => "Cannot get a value from '". $obj->location . "'. ",
+            info    => "grab arguments are '".join( "' '", @args ) . "'."
+        );
+    }
 
     my $value = $obj->fetch;
     if ( $logger->is_debug ) {
@@ -359,18 +352,6 @@ sub grab_ancestor_with_element_named {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Role::Grab - Role to grab data from elsewhere in the tree
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
   $root->grab('foo:2 bar');
@@ -383,6 +364,7 @@ version 2.145
 Role used to let a tree item (i.e. node, hash, list or leaf) to grab
 another item or value from the configuration tree using a path (a bit
 like an xpath path with a different syntax).
+
 
 =head1 METHODS
 
@@ -497,16 +479,5 @@ Example:
   # returns a Config::Model::Node object for a Systemd::Service config class
   $self->grab('Systemd::Service');
 
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
 =cut
+

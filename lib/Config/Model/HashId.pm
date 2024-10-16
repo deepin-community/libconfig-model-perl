@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::HashId 2.145;
+package Config::Model::HashId;
 
 use Mouse;
 use 5.10.1;
@@ -331,22 +322,19 @@ sub move {
     my $self = shift;
     my ( $from, $to, %args ) = @_;
 
+    $logger->trace("moving item from $from to $to");
+
     Config::Model::Exception::User->throw(
         object  => $self,
-        message => "move: unknow key $from"
+        message => "move: unknow from key $from"
     ) unless exists $self->{data}{$from};
 
     my $ok = $self->check_idx($to);
 
     my $check = $args{check};
     if ($ok or $check eq 'no') {
-
-        # this may clobber the old content of $self->{data}{$to}
-        $self->{data}{$to} = delete $self->{data}{$from};
-        delete $self->{warning_hash}{$from};
-
-        # update index_value attribute in moved objects
-        $self->{data}{$to}->index_value($to);
+        # this places $to at the end of the ordered list (for ordered hash)
+        $self->copy($from, $to);
 
         $self->notify_change( note => "rename key from '$from' to '$to'" );
 
@@ -355,6 +343,7 @@ sub move {
         my $imode = $self->instance->get_data_mode;
         $self->set_data_mode( $to, $imode );
 
+        # find where are $to and $from keys
         my ( $to_idx, $from_idx );
         my $list = $self->{list};
         for (my $idx = 0; $idx <= $#$list; $idx++) {
@@ -362,17 +351,16 @@ sub move {
             $from_idx = $idx if $list->[$idx] eq $from;
         }
 
-        if ( defined $to_idx ) {
-            # Since $to is clobbered, $from takes its place in the list
-            $list->[$from_idx] = $to;
+        # replace $from with $to in the order list of the ordered hash
+        # Since $to is clobbered, $from takes its place in the list
+        $list->[$from_idx] = $to;
 
-            # and the $from entry is removed from the list
-            splice @$list, $to_idx, 1;
-        }
-        else {
-            # $to is moved in the place of from in the list
-            $list->[$from_idx] = $to;
-        }
+        # and the obsolete place for $to entry is removed from the list
+        splice @$list, $to_idx, 1;
+
+        $self->_delete($from);
+        delete $self->{warning_hash}{$from};
+
     }
     elsif ($check eq 'yes') {
         Config::Model::Exception::WrongValue->throw(
@@ -502,9 +490,10 @@ sub _load_data_from_hash {
     elsif ( $self->{ordered} and (not $data->{__skip_order} and keys %$data > 1)) {
         $logger->warn(
             "HashId " . $self->location . ": loading ordered "
-                . "hash from hash ref without special key '__order'. Element "
-                . "order is not defined"
-            );
+            . "hash from hash ref without special key '__order'. Element "
+            . "order is not defined. If needed, this warning can be suppressed by passing "
+            . " key '__skip_order' set to 1."
+        );
         $from = ' without '.$order_key;
     }
     delete $data->{__skip_order};
@@ -577,18 +566,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Handle hash element for configuration model
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::HashId - Handle hash element for configuration model
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -721,17 +698,5 @@ L<Config::Model::Instance>,
 L<Config::Model::AnyId>,
 L<Config::Model::ListId>,
 L<Config::Model::Value>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

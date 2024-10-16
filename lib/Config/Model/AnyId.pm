@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::AnyId 2.145;
+package Config::Model::AnyId;
 
 use 5.020;
 
@@ -515,12 +506,7 @@ sub check_content ($self, %args) {
 
         if (not $silent) {
             for ( @warn ) {
-                if ($::_use_log4perl_to_warn) {
-                    $user_logger->warn( "Warning in '" . $self->location_short . "': $_" )
-                }
-                else {
-                    warn( "Warning in '" . $self->location_short . "': $_\n" )
-                }
+                $user_logger->warn( "Warning in '" . $self->location_short . "': $_" )
             }
         }
 
@@ -592,12 +578,7 @@ sub check_idx ($self, @args) {
 
     if (@warn and not $silent and $check ne 'no') {
         for (@warn) {
-            if ($::_use_log4perl_to_warn) {
-                $user_logger->warn( "Warning in '" . $self->location_short . "': $_" );
-            }
-            else {
-                warn( "Warning in '" . $self->location_short . "': $_\n" )
-            }
+            $user_logger->warn( "Warning in '" . $self->location_short . "': $_" );
         }
     }
 
@@ -793,8 +774,12 @@ sub set ($self, $path, @args) {
     return $self->fetch_with_id($item)->set( $new_path, @args );
 }
 
-sub copy {
-    my ( $self, $from, $to ) = @_;
+sub copy ( $self, $from, $to ) {
+
+    Config::Model::Exception::User->throw(
+        object  => $self,
+        message => "move: unknow from key $from"
+    ) unless $self->exists($from);
 
     my $from_obj = $self->fetch_with_id($from);
     my $ok       = $self->check_idx($to);
@@ -1065,18 +1050,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Base class for hash or list element
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::AnyId - Base class for hash or list element
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -1711,17 +1684,5 @@ L<Config::Model::HashId>,
 L<Config::Model::ListId>,
 L<Config::Model::CheckList>,
 L<Config::Model::Value>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

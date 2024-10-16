@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Role::HelpAsText 2.145;
+package Config::Model::Role::HelpAsText;
 
 # ABSTRACT: Translate element help from pod to text
 
@@ -16,14 +7,15 @@ use strict;
 use warnings;
 use Pod::Text;
 use Pod::Simple 3.23;
-use 5.10.1;
+use v5.20;
+
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
 
 requires('get_help');
 
-sub get_help_as_text {
-    my $self = shift;
-
-    my $pod = $self->get_help(@_) ;
+sub get_help_as_text ($self, @args) {
+    my $pod = $self->get_help(@args) ;
     return unless defined $pod;
 
     my $parser = Pod::Text->new(
@@ -46,18 +38,6 @@ sub get_help_as_text {
 1;
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Role::HelpAsText - Translate element help from pod to text
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -82,16 +62,5 @@ Calls C<get_help> and transform the Pod output to text.
 
 L<Pod::Text>, L<Pod::Simple>
 
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
 =cut
+

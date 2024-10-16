@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::WarpedNode 2.145;
+package Config::Model::WarpedNode;
 
 use Mouse;
 
@@ -306,18 +297,6 @@ sub trigger_warp {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::WarpedNode - Node that change config class properties
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  use Config::Model;
@@ -369,6 +348,7 @@ version 2.145
  $root->load( steps => 'master_switch=cY' );
  print "a_warped_node class: ",$node->config_class_name,"\n" ;
  # a_warped_node class: ClassY
+
 
 =head1 DESCRIPTION
 
@@ -490,6 +470,7 @@ the available elements of the node carried by the warped node.
 
 =head1 EXAMPLE
 
+
  $model ->create_config_class 
   (
    element =>
@@ -559,17 +540,5 @@ L<Config::Model::AnyThing>,
 L<Config::Model::Warper>,
 L<Config::Model::WarpedNode>,
 L<Config::Model::Value>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

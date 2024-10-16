@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::SearchElement 2.145;
+package Config::Model::SearchElement;
 
 use Log::Log4perl qw(get_logger :levels);
 use Carp;
@@ -318,18 +309,6 @@ sub _auto_choose_elt {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::SearchElement - Search an element in a configuration model
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  use Config::Model;
@@ -413,6 +392,7 @@ version 2.145
  $target = $searcher->auto_choose($element_call_back, $id_call_back) ;
   print "Automatic search found '",$target->location,"'\n";
  # Automatic search found 'hash_of_nodes:en foo'
+
 
 =head1 DESCRIPTION
 
@@ -547,6 +527,7 @@ For instance, your callback can be :
     return $choice[1] ;
  }
 
+
 Both call-back are expected to return a scalar value that is either:
 
 =over
@@ -573,17 +554,5 @@ L<Config::Model::AnyId>,
 L<Config::Model::ListId>,
 L<Config::Model::HashId>,
 L<Config::Model::Value>,
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

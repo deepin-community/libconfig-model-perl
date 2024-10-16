@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Utils::GenClassPod 2.145;
+package Config::Model::Utils::GenClassPod;
 
 # ABSTRACT: generate pod documentation from configuration models
 
@@ -46,18 +37,6 @@ sub gen_class_pod {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Utils::GenClassPod - generate pod documentation from configuration models
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  use Config::Model::Utils::GenClassPod;
@@ -78,17 +57,5 @@ L<Config::Model::generate_doc|Config::Model/"generate_doc ( top_class_name , dir
 You can also pass one or more class names. C<gen_class_pod> writes
 the documentation for each passed class and all other classes used by
 the passed classes.
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

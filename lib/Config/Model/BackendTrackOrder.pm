@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::BackendTrackOrder 2.145;
+package Config::Model::BackendTrackOrder;
 
 # ABSTRACT: Track read order of elements from configuration
 
@@ -132,18 +123,6 @@ sub get_ordered_element_names {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::BackendTrackOrder - Track read order of elements from configuration
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  # inside a backend
@@ -213,16 +192,5 @@ Returns a list of elements respecting user's order.
 
 Returns the canonical list if Instance canonical attribute is 1.
 
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
 =cut
+

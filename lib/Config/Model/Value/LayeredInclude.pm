@@ -1,37 +1,30 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Value::LayeredInclude 2.145;
+package Config::Model::Value::LayeredInclude;
 
-use 5.010;
+use v5.20;
+use Mouse;
 use strict;
 use warnings;
 use Log::Log4perl qw(get_logger :levels);
 
 use base qw/Config::Model::Value/;
 
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
+
 my $logger = get_logger("Tree::Element::Value::LayeredInclude");
 
 # should we clear all layered value when include value is changed ?
 # If yes, beware of recursive includes. Clear should only be done once.
 
-sub _store {
-    my $self = shift;
-    my %args = @_;
-
+around _store => sub ($orig, $self, %args) {
     my ( $value, $check, $silent, $notify_change, $ok, $callback ) =
         @args{qw/value check silent notify_change ok callback/};
 
     my $old_value = $self->_fetch_no_check;
 
-    $self->SUPER::_store(%args);
+    $orig->($self, %args);
     {
+        ## no critic (TestingAndDebugging::ProhibitNoWarnings)
         no warnings 'uninitialized';
         return $value if $value eq $old_value;
     }
@@ -46,6 +39,7 @@ sub _store {
     }
 
     {
+        ## no critic (TestingAndDebugging::ProhibitNoWarnings)
         no warnings 'uninitialized';
         $logger->debug("Loading layered config from $value (old_data is $old_value)");
     }
@@ -65,25 +59,13 @@ sub _store {
     $logger->debug("Done loading layered config from $value");
 
     return $value;
-}
+};
 
 1;
 
 # ABSTRACT: Include a sub layer configuration
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Value::LayeredInclude - Include a sub layer configuration
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -128,17 +110,5 @@ included files.
 =back
 
 This class works only with the first type
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut
