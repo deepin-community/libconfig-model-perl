@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Loader 2.145;
+package Config::Model::Loader;
 
 use Carp;
 use strict;
@@ -20,6 +11,9 @@ use Log::Log4perl qw(get_logger :levels);
 use JSON;
 use Path::Tiny;
 use YAML::Tiny;
+
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
 
 my $logger = get_logger("Loader");
 my $verbose_logger = get_logger("Verbose.Loader");
@@ -68,6 +62,39 @@ sub _log_cmd {
     $verbose_logger->info("command '$str': $message");
 }
 
+sub _split_string ($str) {
+    # do a split on ' ' but take quoted string into account
+    return (
+        $str =~ m/
+         (         # begin of *one* command
+          (?:        # group parts of a command (e.g ...:...=... )
+           [^\s"']+  # match anything but a space and a quote
+           (?:        # begin quoted group
+             "         # begin of a string
+              (?:        # begin group
+                \\"       # match an escaped quote
+                |         # or
+                [^"]      # anything but a quote
+              )*         # lots of time
+             "         # end of the string
+           )          # end of quoted group
+           ?          # match if I got more than one group
+           (?:        # begin quoted group
+             '         # begin of a string
+              (?:        # begin group
+                \\'       # match an escaped quote
+                |         # or
+                [^']      # anything but a quote
+              )*         # lots of time
+             '         # end of the string
+           )          # end of quoted group
+           ?          # match if I got more than one group
+          )+      # can have several parts in one command
+         )        # end of *one* command
+        /gx    # 'g' means that all commands are fed into @command array
+    );         #"asdf ;
+}
+
 sub load {
     my $self = shift;
 
@@ -93,26 +120,7 @@ sub load {
     # accept commands
     my $huge_string = ref $steps ? join( ' ', @$steps ) : $steps;
 
-    # do a split on ' ' but take quoted string into account
-    my @command = (
-        $huge_string =~ m/
-         (         # begin of *one* command
-          (?:        # group parts of a command (e.g ...:...=... )
-           [^\s"]+  # match anything but a space and a quote
-           (?:        # begin quoted group
-             "         # begin of a string
-              (?:        # begin group
-                \\"       # match an escaped quote
-                |         # or
-                [^"]      # anything but a quote
-              )*         # lots of time
-             "         # end of the string
-           )          # end of quoted group
-           ?          # match if I got more than one group
-          )+      # can have several parts in one command
-         )        # end of *one* command
-        /gx    # 'g' means that all commands are fed into @command array
-    );         #"asdf ;
+    my @command = _split_string($huge_string);
 
     #print "command is ",join('+',@command),"\n" ;
 
@@ -159,7 +167,7 @@ sub _split_cmd {
     my $cmd = shift;
     $logger->trace("split on: ->$cmd<-");
 
-    my $quoted_string = qr/"(?: \\" | [^"] )* "/x;    # quoted string
+    my $quoted_string = qr/(?:"(?: \\" | [^"] )* ")|(?:'(?: \\' | [^'] )* ')/x;    # quoted string
 
     # do a split on ' ' but take quoted string into account
     my @command = (
@@ -185,7 +193,7 @@ sub _split_cmd {
                 | (
                     (?:
                       $quoted_string
-                     | [^#\s]                # or non whitespace
+                     | [^#\s"']              # or non whitespace
                     )+                       # many
                   )
 	        )?
@@ -211,7 +219,7 @@ sub _split_cmd {
             error   => "Syntax error: spurious char at command end: '$leftout'. Did you forget double quotes ?"
         );
     }
-    return wantarray ? @command : \@command;
+    return @command;
 }
 
 my %load_dispatch = (
@@ -485,6 +493,7 @@ sub _load_check_list {
             ':.insert_at'     => sub { $_[1]->insert_at( @_[ 5 .. $#_ ] ); return 'ok'; },
             ':.insort'        => sub { $_[1]->insort( @_[ 5 .. $#_ ] ); return 'ok'; },
             ':.insert_before' => \&_insert_before,
+            ':.ensure'        => \&_ensure_list_value,
         },
         'list_*' => {
             ':.copy'          => sub { $_[1]->copy( $_[5], $_[6] ); return 'ok'; },
@@ -499,6 +508,7 @@ sub _load_check_list {
         'hash_*' => {
             ':.sort'          => sub { $_[1]->sort; return 'ok'; },
             ':.copy'          => sub { $_[1]->copy( $_[5], $_[6] ); return 'ok'; },
+            ':.rename'        => sub { $_[1]->move( $_[5], $_[6] ); return 'ok'; },
             ':.clear'         => sub { $_[1]->clear; return 'ok';},
         },
         # part of list or hash. leaf element have their own dispatch table
@@ -507,7 +517,7 @@ sub _load_check_list {
         leaf => {
             ':.rm_value' => \&_remove_by_value,
             ':.rm_match' => \&_remove_matched_value,
-            ':.subtitute' => \&_substitute_value,
+            ':.substitute' => \&_substitute_value,
         },
         fallback => {
             ':.rm' => \&_remove_by_id,
@@ -516,10 +526,10 @@ sub _load_check_list {
     );
 
     my %equiv = (
-        'hash_*' => { qw/:@ :.sort/},
+        'hash_*' => { qw/:@ :.sort :.move :.rename/},
         list_leaf => { qw/:@ :.sort :< :.push :> :.unshift/ },
         # fix for cme gh#2
-        leaf => { qw/:-= :.rm_value :-~ :.rm_match :=~ :.subtitute/ },
+        leaf => { qw/:-= :.rm_value :-~ :.rm_match :=~ :.substitute/ },
         fallback => { qw/:- :.rm ~ :.rm/ },
     );
 
@@ -557,6 +567,17 @@ sub _insert_before {
     return 'ok';
 }
 
+sub _ensure_list_value {
+    my ( $self, $element, $check, $inst, $cmdref, @values ) = @_;
+    my %content = map { $_ => 1 } $element->fetch_all_values;
+    foreach my $one_value (@values) {
+        next if $content{$one_value};
+        $element->insort($one_value);
+        $content{$one_value} = 1;
+    }
+
+    return 'ok';
+}
 sub _remove_by_id {
     my ( $self, $element, $check, $inst, $cmdref, $id ) = @_;
     $logger->debug("_remove_by_id: removing id '$id'");
@@ -564,11 +585,18 @@ sub _remove_by_id {
     return 'ok';
 }
 
+sub __load_json_file ($file) {
+    # utf8 decode is done by JSON module, so slurp_raw must be used
+    return decode_json($file->slurp_raw);
+}
+
 sub _load_json_vector_data {
     my ( $self, $element, $check, $inst, $cmdref, $vector ) = @_;
     $logger->debug("_load_json_vector_data: loading '$vector'");
     my ($file, @vector) = $self->__get_file_from_vector($element,$inst,$vector);
-    my $data = decode_json($file->slurp_utf8);
+
+    my $data = __load_json_file($file);
+
     # test for diff before clobbering ? What about deep data ???
     $element->load_data(
         data => __data_from_vector($data, @vector),
@@ -1003,7 +1031,7 @@ sub __get_file_from_vector {
 sub _store_json_vector_in_value {
     my ( $self, $element, $value, $check, $instructions, $cmd ) = @_;
     my ($file, @vector) = $self->__get_file_from_vector($element,$instructions,$value);
-    my $data = decode_json($file->slurp_utf8);
+    my $data = __load_json_file($file);
     $element->store(
         value => __data_from_vector($data, @vector),
         check => $check
@@ -1054,18 +1082,6 @@ sub _load_value {
 # ABSTRACT: Load serialized data into config tree
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Loader - Load serialized data into config tree
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -1120,28 +1136,20 @@ version 2.145
      listb:0=foo listb:1=baz';
  $root->load( steps => $steps );
 
- print $root->describe,"\n" ;
- # name         value        type         comment
- # foo          FOO          string
- # bar          [undef]      string
- # hash_of_nodes <Foo>        node hash    keys: "en" "fr"
- # lista        foo,bar,baz  list
- # listb        foo,baz      list
-
+ my $s = $root->fetch_element_value('foo');      # => is 'FOO'
+ $s = $root->grab_value('hash_of_nodes:en foo'); # => is 'hello'
+ $s = $root->grab_value('lista:1');              # => is 'bar'
+ $s = $root->grab_value('lista:2');              # => is 'baz'
 
  # delete some data
  $root->load( steps => 'lista~2' );
 
- print $root->describe(element => 'lista'),"\n" ;
- # name         value        type         comment
- # lista        foo,bar      list
+ $s = $root->grab_value('lista:2');              # => is undef
 
  # append some data
  $root->load( steps => q!hash_of_nodes:en foo.=" world"! );
 
- print $root->grab('hash_of_nodes:en')->describe(element => 'foo'),"\n" ;
- # name         value        type         comment
- # foo          "hello world" string
+ $s = $root->grab_value('hash_of_nodes:en foo'); # => is 'hello world'
 
 =head1 DESCRIPTION
 
@@ -1221,6 +1229,7 @@ command specified below, e.g C</a_string="foo bar">
 
 =over
 
+
 =item xxx:yy
 
 Go down using C<xxx> element and id C<yy> (For C<hash> or C<list>
@@ -1292,7 +1301,7 @@ Sort the list
 
 Insert C<zz> value on C<xxx> list before B<index> C<yy>.
 
-=item xxx:.insert_before(yy,zz)
+=item  xxx:.insert_before(yy,zz)
 
 Insert C<zz> value on C<xxx> list before B<value> C<yy>.
 
@@ -1321,6 +1330,13 @@ is preserved. Note that all keys are sorted once this instruction is
 called. Putting key order aside, C<xxx:.insort(zz,vv)> has the
 same effect as C<xxx:zz=vv> instruction.
 
+=item xxx:.ensure(zz,...)
+
+Ensure that list C<xxx> contains value C<zz>. If value C<zz> is
+already stored in C<xxx> list, this function does nothing. In the
+other case, value C<zz> is inserted in alphabetical order. This
+function accepts a list of values separated by a comma.
+
 =item xxx:=z1,z2,z3
 
 Set list element C<xxx> to list C<z1,z2,z3>. Use C<,,> for undef
@@ -1338,6 +1354,14 @@ Using C<xxx:~/yy/=zz> is also possible.
 =item xxx:.copy(yy,zz)
 
 copy item C<yy> in C<zz> (hash or list).
+
+=item xxx:.rename(yy,zz)
+
+rename item C<yy> in C<zz> (hash).
+
+=item xxx:.move(yy,zz)
+
+Alias to rename.
 
 =item xxx:.json("path/to/file.json/foo/bar")
 
@@ -1449,9 +1473,11 @@ C<foo#comment:bar> is B<not> valid.
 
 =head2 Quotes
 
-You can surround indexes and values with double quotes. E.g.:
+You can surround indexes and values with single or double quotes. E.g.:
 
-  a_string="\"foo\" and \"bar\""
+  a_string='"foo" and "bar"'
+
+Single quotes were added in version 2.153.
 
 =head1 Examples
 
@@ -1521,17 +1547,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 =head1 SEE ALSO
 
 L<Config::Model>,L<Config::Model::Node>,L<Config::Model::Dumper>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

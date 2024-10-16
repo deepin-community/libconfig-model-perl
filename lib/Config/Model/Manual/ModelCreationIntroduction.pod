@@ -1,20 +1,6 @@
 # PODNAME: Config::Model::Manual::ModelCreationIntroduction
 # ABSTRACT: Introduction to model creation with Config::Model
 
-__END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Manual::ModelCreationIntroduction - Introduction to model creation with Config::Model
-
-=head1 VERSION
-
-version 2.145
-
 =head1 Introduction
 
 This page describes how to write a simple configuration
@@ -25,7 +11,7 @@ Note that this document shows a lot of Perl data structure to
 highlight the content of a model. A Perl data structure is very
 similar to a JSON structure. The only thing you need to know are:
 
-=over
+=over 
 
 =item *
 
@@ -124,6 +110,7 @@ For instance, consider this C<xorg.conf> snippet:
         Depth       24
     EndSubSection
  EndSection
+
 
 Knowing that Xorg.conf can have several Device or Screen sections
 identified by their C<Identifiers>, the configuration can be
@@ -241,7 +228,7 @@ A configuration model is stored this way by Config::Model:
           value_type => 'integer',
           upstream_default => '10'
       },
-      distributions'=> {
+      distributions => {
           type => 'hash',
           index_type => 'string' ,
           cargo => {
@@ -326,6 +313,7 @@ TheC<Xorg::Screen> class is:
               ]
   }
 
+
 It's now time to detail how the elements of a class are constructed.
 
 =head1 Model analysis
@@ -334,6 +322,7 @@ To define the required configuration classes, you should
 read the documentation of the target application to :
 
 =over
+
 
 =item *
 
@@ -702,6 +691,7 @@ C<Screen> (C<Xorg::Screen>):
           ]
  }
 
+
 =head1 Configuration wizard
 
 Both Perl/Tk and Curses interfaces feature a configuration wizard
@@ -787,11 +777,11 @@ L<Config::Model::Backend::Any> and provide the following methods:
 
 =over
 
-=item new
+=item  new
 
-=item read
+=item  read
 
-=item write
+=item  write
 
 =back
 
@@ -825,17 +815,3 @@ Feel free to send comments and suggestion about this page at
 =head1 AUTHORS
 
 Dominique Dumont <ddumont at cpan.org>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
-=cut

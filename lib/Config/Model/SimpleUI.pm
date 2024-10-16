@@ -1,21 +1,15 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::SimpleUI 2.145;
+package Config::Model::SimpleUI;
 
 use Carp;
-use 5.010;
+use v5.020;
 use strict;
 use warnings;
 use open      qw(:std :utf8);    # undeclared streams in UTF-8
 use Encode qw(decode_utf8);
 use Regexp::Common qw/delimited/;
+
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
 
 my $syntax = '
 cd <elt>, cd <elt:key>, cd - , cd !
@@ -149,10 +143,12 @@ my %run_dispatch = (
         }
         return "";
     },
-    display => sub {
-        my $self = shift;
-        say "Nothing to display" unless @_;
-        return $self->{current_node}->grab_value(@_);
+    display => sub ($self, @args) {
+        unless (@args) {
+            say "Nothing to display";
+            return;
+        }
+        return $self->{current_node}->grab_value(@args);
     },
     info => sub {
         my $self = shift;
@@ -291,8 +287,8 @@ sub run_loop {
 
     my $instance = $self->{root}->instance;
     if ( $instance->c_count ) {
-        my @changes = $instance->say_changes;
-        if (@changes) {
+        if ($instance->has_changes) {
+            $instance->say_changes;
             print "write back data before exit ? (Y/n)";
             $user_cmd = <STDIN>;
             $instance->write_back unless $user_cmd =~ /n/i;
@@ -319,8 +315,12 @@ sub run {
     my ( $action, @args ) = ( $user_cmd =~ /((?:[^\s"']|$re)+)/g );
 
     if ( defined $run_dispatch{$action} ) {
-        my $res = eval { $run_dispatch{$action}->( $self, @args ); };
-        print $@ if $@;
+        my $res;
+        my $ok = eval {
+            $res = $run_dispatch{$action}->( $self, @args );
+            1;
+        };
+        say $@->message unless $ok;
         return $res;
     }
     else {
@@ -350,20 +350,6 @@ sub list_cd_path {
 1;
 
 #ABSTRACT: Simple interface for Config::Model
-
-__END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::SimpleUI - Simple interface for Config::Model
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -588,17 +574,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>,
 L<Config::Model::Instance>,
 L<Config::Model::Node>,
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

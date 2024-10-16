@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::TreeSearcher 2.145;
+package Config::Model::TreeSearcher;
 
 use Mouse;
 use Mouse::Util::TypeConstraints;
@@ -143,18 +134,6 @@ __PACKAGE__->meta->make_immutable;
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::TreeSearcher - Search tree for match in value, description...
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  use Config::Model ;
@@ -205,7 +184,7 @@ a value, a description or anything that match the given pattern (or keyword).
 
 Creates a new searcher object. The C<type> parameter can be:
 
-=over
+=over 
 
 =item element 
 
@@ -250,17 +229,6 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>,
 L<Config::Model::SearchElement>,
 L<Config::Model::AnyThing>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
+ 
 =cut
+

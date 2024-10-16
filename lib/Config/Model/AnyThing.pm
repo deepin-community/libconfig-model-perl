@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::AnyThing 2.145;
+package Config::Model::AnyThing;
 
 use Mouse;
 
@@ -323,18 +314,6 @@ __PACKAGE__->meta->make_immutable;
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::AnyThing - Base class for configuration tree item
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  # internal class
@@ -438,7 +417,7 @@ be in the form:
  Annotation text
  
  =back
-
+ 
 =head2 clear_annotation
 
 Clear the annotation of an element
@@ -528,17 +507,5 @@ L<Config::Model::Instance>,
 L<Config::Model::Node>, 
 L<Config::Model::Loader>, 
 L<Config::Model::Dumper>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

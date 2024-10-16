@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::FuseUI 2.145;
+package Config::Model::FuseUI;
 
 # there's no Singleton with Mouse
 use Mouse;
@@ -162,11 +153,6 @@ sub read {
     return -EISDIR() unless ( $type eq 'leaf' or $type eq 'check_list' );
     my $v = fetch_as_line($obj);
 
-    if ( not defined $v ) {
-        return -EINVAL() if $off > 0;
-        return '';
-    }
-
     return -EINVAL() if $off > length($v);
     return 0 if $off == length($v);
     my $ret = substr( $v, $off, $buf );
@@ -315,18 +301,6 @@ sub run_loop {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::FuseUI - Fuse virtual file interface for Config::Model
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  # command line
@@ -383,13 +357,14 @@ empty and the old value is lost.
 
 =back
 
+
 =head1 constructor
 
 =head1 new
 
 parameters are:
 
-=over
+=over 
 
 =item model
 
@@ -418,20 +393,8 @@ performs the mount. Debug parameter is passed to Fuse system to get traces from 
 Mount the fuse file system. This method blocks until the file system is
 unmounted (with C<fusermount -u mount_point> command)
 
+=cut
+
 =head1 SEE ALSO
 
 L<Fuse>, L<Config::Model>, L<cme>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
-=cut

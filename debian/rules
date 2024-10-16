@@ -1,14 +1,31 @@
 #!/usr/bin/make -f
 
+# See debhelper(7) (uncomment to enable)
+# output every command that modifies files on the build system.
+#DH_VERBOSE = 1
+
+# see EXAMPLES in dpkg-buildflags(1) and read /usr/share/dpkg/*
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/default.mk
 BUILDHOME = $(CURDIR)/debian/build
 
 %:
 	dh $@
 
+# inject version number at beginning of dist.ini file
+# this is required because upstream uses Git::NextVersion plugin
+override_dh_dzil_build:
+	perl -p -g -i -E 'say "version = $(DEB_VERSION_UPSTREAM)";' dist.ini
+	dh_dzil_build
+
+# cleanup the version injected above
 override_dh_clean:
+	dzil clean
+	find lib -name '*.pod' -delete
+	perl -n -i -E 'print unless /^version =/;' dist.ini
 	dh_clean
 	rm -rf $(BUILDHOME)
 
 override_dh_auto_test:
 	mkdir -p $(BUILDHOME)
-	HOME=$(BUILDHOME) dh_auto_test
+	HOME=$(BUILDHOME) AUTHOR_TESTING=0 dzil test

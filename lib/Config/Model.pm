@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model 2.145;
+package Config::Model;
 
 use 5.20.0;
 use strict ;
@@ -41,7 +32,7 @@ no warnings qw/experimental::signatures experimental::postderef/;
 # ~/.log4config-model config
 my $force_default_log;
 sub force_usage_of_default_log_config () {
-    $force_default_log = 1;
+    return $force_default_log = 1;
 }
 
 my $legacy_logger = get_logger("Model::Legacy") ;
@@ -76,6 +67,7 @@ has instances => (
 # element description in class or in element declaration)), this raw format is not
 # usable without normalization (done by normalize_class_parameters)
 
+# the key if this hash is a model name
 has raw_models => (
     isa     => 'HashRef',
     is      => 'ro',
@@ -85,15 +77,11 @@ has raw_models => (
         raw_model_exists  => 'exists',
         raw_model_defined => 'defined',
         raw_model         => 'get',
+        get_raw_model     => 'get',
         store_raw_model   => 'set',
         raw_model_names   => 'keys',
     },
 );
-
-sub get_raw_model {
-    my $self = shift;
-    return $self->raw_model(@_);
-}
 
 # the result of normalization is stored here. Normalized model aggregate user models and
 # augmented features (the one found in Foo.d directory). inclusion of other class is NOT
@@ -162,11 +150,7 @@ has skip_inheritance => (
     } );
 
 # remove this hack mid 2022
-around BUILDARGS => sub {
-    my $orig  = shift;
-    my $class = shift;
-
-    my %args = @_;
+around BUILDARGS => sub ($orig, $class, %args) {
     my %new;
     foreach my $k (keys %args) {
         if (defined $args{$k}) {
@@ -183,13 +167,13 @@ around BUILDARGS => sub {
 
 # keep this as a separate sub from BUILD. So user can call it before
 # creating Config::Model object
-sub initialize_log4perl {
-    if (ref $_[0]) {
+sub initialize_log4perl (@args) {
+    if (ref $args[0]) {
         # may be called as $self-> initialize_log4perl
-        shift;
+        shift @args;
     }
 
-    my %args = @_;
+    my %args = @args;
 
     my $log4perl_syst_conf_file = path('/etc/log4config-model.conf');
     # avoid undef warning when homedir is not defined (e.g. with Debian cowbuilder)
@@ -226,6 +210,7 @@ sub BUILD {
     my $self = shift;
     my $args = shift;
     initialize_log4perl(verbose => $args->{verbose}) unless Log::Log4perl->initialized();
+    return;
 }
 
 sub show_legacy_issue {
@@ -243,6 +228,7 @@ sub show_legacy_issue {
     } elsif ( $behavior eq 'note' ) {
         $legacy_logger->info( @msg);
     }
+    return;
 }
 
 sub _tweak_instance_args {
@@ -277,10 +263,11 @@ sub _tweak_instance_args {
         || delete $args->{name}          # preferred parameter
         || $app_name                     # fallback in most cases
         || 'default';                    # fallback mostly in tests
+    return;
 }
 
-sub cme {
-    my %args = @_ == 1 ? ( application => $_[0]) : @_ ;
+sub cme (@args) {
+    my %args = @args == 1 ? ( application => $args[0]) : @args ;
 
     if (my $force = delete $args{'force-load'}) {
         $args{check} = 'no' if $force;
@@ -295,9 +282,8 @@ sub cme {
     return $model_storage->instance(%args);
 }
 
-sub instance {
-    my $self = shift;
-    my %args = @_ == 1 ? ( application => $_[0]) : @_ ;
+sub instance ($self, @args) {
+    my %args = @args == 1 ? ( application => $args[0]) : @args ;
 
     # also creates a default name
     _tweak_instance_args(\%args);
@@ -353,10 +339,7 @@ my @other_legal_params = qw/ author element status description summary level acc
 
 # keep as external API. All internal call go through _store_model
 #  See comments around raw_models attribute for explanations
-sub create_config_class {
-    my $self      = shift;
-    my %raw_model = @_;
-
+sub create_config_class ($self, %raw_model) {
     my $config_class_name = delete $raw_model{name}
         or croak "create_config_class: no config class name";
 
@@ -433,6 +416,7 @@ sub include_backend {
             }
         }
     }
+    return;
 }
 
 sub normalize_class_parameters {
@@ -583,6 +567,7 @@ sub handle_experience_permission {
     if (delete $model->{experience}) {
         carp "experience parameter is deprecated";
     }
+    return;
 }
 
 sub translate_legacy_info {
@@ -672,6 +657,7 @@ sub translate_legacy_info {
     $legacy_logger->debug(
         Data::Dumper->Dump( [$info], [ 'translated_' . $elt_name ] ) 
     ) if $legacy_logger->is_debug;
+    return;
 }
 
 sub translate_legacy_backend_info {
@@ -725,7 +711,7 @@ sub translate_legacy_backend_info {
         $self->show_legacy_issue("$config_class_name: backend $ref->{backend}: allow_empty is deprecated. Use auto_create", 'warn');
         $ref->{auto_create} = delete $ref->{allow_empty};
     }
-
+    return;
 }
 
 sub translate_cargo_info {
@@ -760,6 +746,7 @@ sub translate_cargo_info {
     $legacy_logger->debug( 
         Data::Dumper->Dump( [$info], [ 'translated_' . $elt_name ] ) 
     ) if $legacy_logger->is_debug;
+    return;
 }
 
 sub translate_id_names {
@@ -770,6 +757,7 @@ sub translate_id_names {
     $self->translate_name( $config_class_name, $elt_name, $info, 'allow',      'allow_keys',       'die' );
     $self->translate_name( $config_class_name, $elt_name, $info, 'allow_from', 'allow_keys_from',  'die' );
     $self->translate_name( $config_class_name, $elt_name, $info, 'follow',     'follow_keys_from', 'die' );
+    return;
 }
 
 sub translate_name {
@@ -782,6 +770,7 @@ sub translate_name {
         );
         $info->{$to} = delete $info->{$from};
     }
+    return;
 }
 
 sub translate_allow_compute_override {
@@ -796,6 +785,7 @@ sub translate_allow_compute_override {
         );
         $info->{compute}{allow_override} = delete $info->{allow_compute_override};
     }
+    return;
 }
 
 sub translate_compute_info {
@@ -838,6 +828,7 @@ sub translate_compute_info {
             Data::Dumper->Dump( [ $info->{$new_name} ], [ 'new_' . $new_name ] )
         ) if $legacy_logger->is_debug;
     }
+    return;
 }
 
 sub translate_id_class {
@@ -866,6 +857,7 @@ sub translate_id_class {
         "translate_id_class $elt_name output:",
         Data::Dumper->Dump( [$info], [qw/new_info/])
     ) if $legacy_logger->is_debug;
+    return;
 }
 
 # internal: translate default information for id element
@@ -901,6 +893,7 @@ sub translate_id_default_info {
         "translate_id_default_info $elt_name output:",
         Data::Dumper->Dump( [$info], [qw/new_info/])
     ) if $legacy_logger->is_debug;
+    return;
 }
 
 # internal: translate auto_create information for id element
@@ -936,6 +929,7 @@ sub translate_id_auto_create {
         "translate_id_default_info $elt_name output:\n",
         Data::Dumper->Dump( [$info], [qw/new_info/] )
     ) if $legacy_logger->is_debug;
+    return;
 }
 
 sub translate_id_min_max {
@@ -956,6 +950,7 @@ sub translate_id_min_max {
 
         $info->{$good} = delete $info->{$bad};
     }
+    return;
 }
 
 sub translate_warped_node_info {
@@ -982,6 +977,7 @@ sub translate_warped_node_info {
         "translate_warped_node_info $elt_name output:\n",
         Data::Dumper->Dump( [$info], [qw/new_info/] )
     ) if $legacy_logger->is_debug;
+    return;
 }
 
 # internal: translate warp information into 'boolean expr' => { ... }
@@ -1011,6 +1007,7 @@ sub translate_warp_info {
         "translate_warp_info $elt_name output:\n",
         Data::Dumper->Dump( [$warp_info], [qw/new_warp_info/] )
     ) if $legacy_logger->is_debug;
+    return;
 }
 
 # internal
@@ -1164,6 +1161,7 @@ sub translate_legacy_builtin {
 
     $legacy_logger->debug( Data::Dumper->Dump( [$model], ['translated_builtin'] )) 
         if $legacy_logger->is_debug;
+    return;
 }
 
 sub translate_legacy_built_in_list {
@@ -1183,6 +1181,7 @@ sub translate_legacy_built_in_list {
 
     $legacy_logger->debug( Data::Dumper->Dump( [$model], ['translated_built_in_list'] ))
         if $legacy_logger->is_debug;
+    return;
 }
 
 sub include_class {
@@ -1203,6 +1202,7 @@ sub include_class {
     foreach my $inc ( reverse @includes ) {
         $self->include_one_class( $class_name, $target_model, $inc, $include_after );
     }
+    return;
 }
 
 sub include_one_class {
@@ -1264,6 +1264,7 @@ sub include_one_class {
         }
     }
     get_logger('Model')->debug("class $class_name include $include_class done");
+    return;
 }
 
 sub find_model_file_in_dir ($model_name, $model_path) {
@@ -1462,6 +1463,7 @@ sub augment_config_class {
         || croak "augment_config_class: missing class name";
 
     $self->augment_config_class_really( $config_class_name, \%augment_data );
+    return;
 }
 
 sub augment_config_class_really {
@@ -1488,6 +1490,7 @@ sub augment_config_class_really {
     }
 
     $self->store_normalized_model( $config_class_name => $new_model );
+    return;
 }
 
 sub model {
@@ -1513,7 +1516,7 @@ sub model {
 sub get_model {
     my ($self,$model) = @_;
     carp "get_model is deprecated in favor of get_model_clone";
-    $self->get_model_clone($model);
+    return $self->get_model_clone($model);
 }
 
 sub get_model_clone {
@@ -1764,6 +1767,7 @@ sub generate_doc {
             print $res->{$class_name};
         }
     }
+    return;
 }
 
 sub get_element_model {
@@ -1797,10 +1801,7 @@ sub get_normalized_model {
     return dclone($normalized_model);
 }
 
-sub get_element_name {
-    my $self = shift;
-    my %args = @_;
-
+sub get_element_name ($self, %args) {
     my $class = $args{class}
         || croak "get_element_name: missing 'class' parameter";
 
@@ -1823,10 +1824,7 @@ sub get_element_name {
     return wantarray ? @result : join( ' ', @result );
 }
 
-sub get_element_property {
-    my $self = shift;
-    my %args = @_;
-
+sub get_element_property ($self, %args) {
     my $elt = $args{element}
         || croak "get_element_property: missing 'element' parameter";
     my $prop = $args{property}
@@ -1887,16 +1885,6 @@ __PACKAGE__->meta->make_immutable;
 __END__
 
 =pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model - a framework to validate, migrate and edit configuration files
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -2006,6 +1994,8 @@ single command.
 
 Using this project, a typical configuration editor/validator/upgrader
 is made of 3 parts :
+
+
 
   GUI <--------> |---------------|
   CursesUI <---> | |---------|   |
@@ -2500,7 +2490,7 @@ C<force-load>.
 
 Like L<cme> command, C<cme> functions accepts C<force-load>
 parameters. When this argument is true, the instance is created with
-C<check => 'no'>. Hence bad values are stored in C<cme> and must be
+C<<check => 'no'>>. Hence bad values are stored in C<cme> and must be
 corrected before saving back the data.
 
 =head1 Configuration class
@@ -2627,6 +2617,7 @@ can also be declared within the element declaration:
         X          => { description => 'X-ray', } ,
       ]
   ) ;
+
 
 =head1 Load predeclared model
 
@@ -2758,6 +2749,7 @@ log4perl is initialised with:
 
 Currently, this module supports only C<Loader> as verbose parameters.
 
+
 =head1 BUGS
 
 Given Murphy's law, the author is fairly confident that you will find
@@ -2778,7 +2770,7 @@ Dominique Dumont, "ddumont@cpan.org"
 
 =head1 CREDITS
 
-In alphabetical order:
+Contributors to this project are listed in alphabetical order:
 
   Harley Pig
 
@@ -2792,24 +2784,9 @@ In alphabetical order:
 
   Mohammad S Anwar
 
-=head1 LICENSE
+  Topi Miettinen
 
-    Copyright (c) 2005-2016 Dominique Dumont.
-
-    Config-Model is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Lesser General Public License as
-    published by the Free Software Foundation; either version 2.1 of
-    the License, or (at your option) any later version.
-
-    Config-Model is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Lesser Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with Config-Model; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-    02110-1301 USA
+Many thanks for your help
 
 =head1 SEE ALSO
 
@@ -2960,78 +2937,5 @@ L<Config::Model::Warper>
 L<Config::Model::Tester>
 
 =back
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
-=for :stopwords cpan testmatrix url bugtracker rt cpants kwalitee diff irc mailto metadata placeholders metacpan
-
-=head1 SUPPORT
-
-=head2 Websites
-
-The following websites have more information about this module, and may be of help to you. As always,
-in addition to those websites please use your favorite search engine to discover more resources.
-
-=over 4
-
-=item *
-
-CPANTS
-
-The CPANTS is a website that analyzes the Kwalitee ( code metrics ) of a distribution.
-
-L<http://cpants.cpanauthors.org/dist/Config-Model>
-
-=item *
-
-CPAN Testers
-
-The CPAN Testers is a network of smoke testers who run automated tests on uploaded CPAN distributions.
-
-L<http://www.cpantesters.org/distro/C/Config-Model>
-
-=item *
-
-CPAN Testers Matrix
-
-The CPAN Testers Matrix is a website that provides a visual overview of the test results for a distribution on various Perls/platforms.
-
-L<http://matrix.cpantesters.org/?dist=Config-Model>
-
-=item *
-
-CPAN Testers Dependencies
-
-The CPAN Testers Dependencies is a website that shows a chart of the test results of all dependencies for a distribution.
-
-L<http://deps.cpantesters.org/?module=Config::Model>
-
-=back
-
-=head2 Bugs / Feature Requests
-
-Please report any bugs or feature requests by email to C<ddumont at cpan.org>, or through
-the web interface at L<https://github.com/dod38fr/config-model/issues>. You will be automatically notified of any
-progress on the request by the system.
-
-=head2 Source Code
-
-The code is open to the world, and available for you to hack on. Please feel free to browse it and play
-with it, or whatever. If you want to contribute patches, please send me a diff or prod me to pull
-from your repository :)
-
-L<http://github.com/dod38fr/config-model>
-
-  git clone git://github.com/dod38fr/config-model.git
 
 =cut

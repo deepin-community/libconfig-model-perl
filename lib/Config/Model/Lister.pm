@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Lister 2.145;
+package Config::Model::Lister;
 
 use strict;
 use warnings;
@@ -82,18 +73,6 @@ sub applications {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Lister - List available models and applications
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  perl -MConfig::Model::Lister -e'print Config::Model::Lister::models;'
@@ -144,17 +123,5 @@ Returns a string with the list of models.
 =head1 applications
 
 Returns a string with the list of editable applications.
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

@@ -1,0 +1,101 @@
+This module uses gbp and upstream git repository.
+
+As of version 2.154, =pristine-tar= branch is no longer updated.
+
+The instructions of this file assume that the branches are:
+- master :: Debian work
+- upstream :: upstream branch from github
+
+To work on this package, please run:
+
+#+begin_src shell
+  git clone https://salsa.debian.org/perl-team/modules/packages/libconfig-model-perl.git
+  git remote add github https://github.com/dod38fr/config-model.git
+#+end_src
+
+To update this package, first import the changes from upstream:
+#+begin_src shell :dir .. :exports code :results verbatim
+git fetch --all
+#+end_src
+
+Find the latest version:
+#+NAME: version
+#+begin_src shell :dir .. :exports code :results verbatim
+VERSION=$(git describe --tags $(git rev-list '--tags=v*' --max-count=1) | sed 's/^v//')
+echo -n $VERSION
+#+end_src
+
+#+RESULTS: version
+: 2.154
+
+Update debian branch:
+#+begin_src shell :dir .. :exports code :results verbatim :var VERSION=version
+  git checkout master
+  git merge upstream
+#+end_src
+
+Update the debian/copyright file:
+#+begin_src shell :dir .. :exports code :results verbatim :var VERSION=version
+  cme update dpkg-copyright
+#+end_src
+
+Then review the changes and commit the result.
+
+See also https://github.com/dod38fr/config-model/wiki/Updating-debian-copyright-file-with-cme
+
+Check patches (and cleanup if necessary):
+#+begin_src shell :dir .. :exports code :results verbatim :var VERSION=version
+  quilt push -a && quilt pop -a
+#+end_src
+
+Generate a temporary changelog:
+#+begin_src shell :dir .. :exports code :results verbatim :var VERSION=version
+  gbp dch --new-version=$VERSION-1 --snapshot --auto debian/
+#+end_src
+
+Commit =debian/changelog= (otherwise, =gbp buildpackage= tries to build the
+old version):
+
+#+begin_src shell :dir .. :exports code :results verbatim :var VERSION=version
+  git commit -m"new upstream version" debian/changelog
+#+end_src
+
+You can build the package with the following command:
+
+# this requires emacs ob-tmux
+#+begin_src tmux :session build :results verbatim :exports code :var dir=repo_dir
+  cd $dir
+  gbp buildpackage --git-ignore-new
+#+end_src
+
+Note: only committed changes are used by =gbp buildpackage=
+
+Update the changelog:
+
+#+begin_src tmux :session build :results verbatim :exports code :var dir=repo_dir
+  cd $dir
+  gbp dch -Ra --commit
+#+end_src
+
+Once everything is fine, build a source package and tag:
+
+#+begin_src tmux :session build :results verbatim :exports code :var dir=repo_dir
+  cd $dir
+  gbp buildpackage -S --git-tag
+#+end_src
+
+Push on salsa:
+
+#+begin_src shell :dir ".." :results verbatim :exports code
+  gbp push
+#+end_src
+
+For more details, see [[https://honk.sigxcpu.org/projects/git-buildpackage/manual-html/gbp.import.upstream-git.html#gbp.import.upstream.git.notarball][gbp import with git documentation]].
+
+# this is a workaround for a bug in ob-tmux. No need to execute this
+#+NAME: repo_dir
+#+BEGIN_SRC shell :results verbatim :exports no
+  cd ..
+  echo -n $PWD
+#+END_SRC
+

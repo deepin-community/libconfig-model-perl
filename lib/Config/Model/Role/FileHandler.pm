@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Role::FileHandler 2.145;
+package Config::Model::Role::FileHandler;
 
 # ABSTRACT: role to read or write configuration files
 
@@ -29,6 +20,7 @@ my $logger = get_logger("FileHandler");
 # used only for tests
 sub _set_test_home {
     Config::Model::TypeConstraints::_set_test_home(shift) ;
+    return;
 }
 
 # Configuration directory where to read and write files. This value
@@ -58,19 +50,8 @@ sub get_tuned_config_dir {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Role::FileHandler - role to read or write configuration files
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
+
 
 =head1 DESCRIPTION
 
@@ -78,16 +59,8 @@ Role used to handle configuration files on the behalf of a backend.
 
 =head1 METHODS
 
-=head1 AUTHOR
 
-Dominique Dumont
 
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut
+
