@@ -22,7 +22,6 @@ Here are the dedicated trackers:
 * problem with `cme check|fix|edit approx`: https://github.com/dod38fr/config-model-approx/issues
 * problem with `cme check|fix|edit dpkg`: run `reportbug libconfig-model-dpkg-perl`
 * problem with `cme check|fix|edit popcon`: https://github.com/dod38fr/config-model/issues
-* problem with `cme check|fix|edit multistrap`: https://github.com/dod38fr/config-model/issues
 * problem with `cme meta edit`: https://github.com/dod38fr/config-model-itself/issues
 * problem with cme GUI: https://github.com/dod38fr/config-model-tkui/issues
 
@@ -83,5 +82,5 @@ Non Debian users can also prepare a patch using CPAN tarball:
 Feedback is important. Please take a moment to rate, comment or add
 stars to this project:
 
-* [cme github](https://github.com/dod38fr/cme-perl) or [cme cpan ratings](http://cpanratings.perl.org/rate/?distribution=App-Cme)
+* [cme github](https://github.com/dod38fr/cme-perl)
 * [config-model github](https://github.com/dod38fr/config-model) or [config-model cpan ratings](http://cpanratings.perl.org/rate/?distribution=Config::Model)

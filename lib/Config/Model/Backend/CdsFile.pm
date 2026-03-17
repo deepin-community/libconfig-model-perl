@@ -1,15 +1,6 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Backend::CdsFile 2.145;
+package Config::Model::Backend::CdsFile;
 
-use 5.10.1;
+use 5.020;
 use Carp;
 use strict;
 use warnings;
@@ -17,14 +8,15 @@ use Config::Model::Exception;
 use File::Path;
 use Log::Log4perl qw(get_logger :levels);
 
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
+
 use base qw/Config::Model::Backend::Any/;
 
 my $logger = get_logger("Backend::CdsFile");
 
-sub read {
-    my $self = shift;
-    my %args = @_;
-
+## no critic (Subroutines::ProhibitBuiltinHomonyms)
+sub read ($self, %args) {
     # args is:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -41,10 +33,7 @@ sub read {
     return 1;
 }
 
-sub write {
-    my $self = shift;
-    my %args = @_;
-
+sub write ($self, %args) {
     # args is:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -66,18 +55,6 @@ sub write {
 # ABSTRACT: Read and write config as a Cds data structure
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Backend::CdsFile - Read and write config as a Cds data structure
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -192,17 +169,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>,
 L<Config::Model::BackendMgr>,
 L<Config::Model::Backend::Any>,
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

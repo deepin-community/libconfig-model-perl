@@ -1,20 +1,17 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Exception 2.145;
+package Config::Model::Exception;
 
 use warnings;
 use strict;
 use Data::Dumper;
 use Mouse;
-use 5.10.1;
+use v5.20;
 use Carp;
+
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
+
+# I don't like multiple packages in a file, but this is an Exception
+## no critic (Modules::ProhibitMultiplePackages)
 
 @Carp::CARP_NOT=qw/Config::Model::Exception Config::Model::Exception::Any/;
 
@@ -37,7 +34,9 @@ sub _build_description {
     return $self->_desc;
 }
 
-sub _desc { 'config error' }
+sub _desc {
+    return 'config error' ;
+}
 
 has  object => ( is => 'rw', isa => 'Ref') ;
 has  info => (is => 'rw', isa =>'Str', default => '');
@@ -45,12 +44,27 @@ has  message => (is => 'rw', isa =>'Str', default => '');
 has  error => (is => 'rw', isa =>'Str', default => '');
 has  trace => (is => 'rw', isa =>'Str', default => '');
 
+# need to keep these objects around: in some tests the error() method is
+# called after the instance is garbage collected. Instances are kept
+# as weak ref in node (and othe tree objects). When instance is
+# garbage collected, it's destroyed so error() can no longer be invoked.
+# Solution: keep instance as error attributes.
+has  instance => ( is => 'rw', isa => 'Ref') ;
+
+sub BUILD ($self, $) {
+    $self->instance($self->object->instance) if defined $self->object;
+    return;
+}
+
 # without this overload, a test like if ($@) invokes '""' overload
-sub is_error { return ref ($_[0])}
+sub is_error (@args) {
+    return ref ($args[0]);
+}
 
 
 sub Trace {
     $trace = shift;
+    return;
 }
 
 sub error_or_msg {
@@ -58,9 +72,8 @@ sub error_or_msg {
     return $self->error  || $self->message;
 }
 
-sub throw {
-    my $class = shift;
-    my $self = $class->new(@_);
+sub throw ($class, @args) {
+    my $self = $class->new(@args);
     # when an exception is thrown, caught and rethrown, the first full
     # trace (provided by longmess) is clobbered by a second, shorter
     # trace (also provided by longmess). To avoid that, the first
@@ -98,32 +111,38 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::Any 2.145;
+package Config::Model::Exception::Any;
 
 use Mouse;
 extends 'Config::Model::Exception';
 
-package Config::Model::Exception::ModelDeclaration 2.145;
+package Config::Model::Exception::ModelDeclaration;
 
 use Mouse;
 extends 'Config::Model::Exception::Fatal';
 
-sub _desc {'configuration model declaration error' }
+sub _desc {
+    return 'configuration model declaration error' ;
+}
 
-package Config::Model::Exception::User 2.145;
+package Config::Model::Exception::User ;
 
 use Mouse;
 extends 'Config::Model::Exception::Any';
-sub _desc {'user error' }
+sub _desc {
+    return 'user error' ;
+}
 
 
 ## old classes below
-package Config::Model::Exception::Syntax 2.145;
+package Config::Model::Exception::Syntax;
 
 use Mouse;
 extends 'Config::Model::Exception::Any';
 
-sub _desc { 'syntax error' }
+sub _desc {
+    return 'syntax error' ;
+}
 
 has [qw/parsed_file parsed_line/] => (is => 'rw');
 
@@ -139,12 +158,14 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::LoadData 2.145;
+package Config::Model::Exception::LoadData;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'Load data structure (perl) error' };
+sub _desc {
+    return 'Load data structure (perl) error' };
+;
 
 has wrong_data => (is => 'rw');
 
@@ -165,13 +186,15 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::Model 2.145;
+package Config::Model::Exception::Model;
 
 use Carp;
 use Mouse;
 extends 'Config::Model::Exception::Fatal';
 
-sub _desc { 'configuration model error'}
+sub _desc {
+    return 'configuration model error';
+}
 
 
 sub full_message {
@@ -200,12 +223,14 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::Load 2.145;
+package Config::Model::Exception::Load;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'Load command error'}
+sub _desc {
+    return 'Load command error';
+}
 
 has command => (is => 'rw', isa => 'ArrayRef|Str');
 
@@ -215,9 +240,9 @@ sub full_message {
     my $location = defined $self->object ? $self->object->name : '';
     my $msg      = $self->description;
     my $cmd      = $self->command;
-    no warnings 'uninitialized';
+
     my $cmd_str =
-           ref($cmd)   ? join('',@$cmd)
+           ref($cmd)   ? join('', map { $_ // '<undef>' } @$cmd)
         : $cmd         ? "'$cmd'"
         : defined $cmd ? '<empty>'
         :                '<undef>';
@@ -229,12 +254,14 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::UnavailableElement 2.145;
+package Config::Model::Exception::UnavailableElement;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'unavailable element'}
+sub _desc {
+    return 'unavailable element';
+}
 
 has [qw/element function/] => (is => 'rw', isa => 'Str');
 
@@ -260,20 +287,24 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::AncestorClass 2.145;
+package Config::Model::Exception::AncestorClass;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'unknown ancestor class'}
+sub _desc {
+    return 'unknown ancestor class';
+}
 
 
-package Config::Model::Exception::ObsoleteElement 2.145;
+package Config::Model::Exception::ObsoleteElement;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'Obsolete element' }
+sub _desc {
+    return 'Obsolete element' ;
+}
 
 has element => (is => 'rw', isa => 'Str');
 
@@ -293,16 +324,18 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::UnknownElement 2.145;
+package Config::Model::Exception::UnknownElement;
 
 use Carp;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'unknown element' }
+sub _desc {
+    return 'unknown element' ;
+}
 
-has [qw/element function where/] => (is => 'rw');
+has [qw/element function where autoadd/] => (is => 'rw');
 
 sub full_message {
     my $self = shift;
@@ -347,7 +380,7 @@ sub full_message {
     }
 
     my @match_keys = $obj->can('accept_regexp') ? $obj->accept_regexp() : ();
-    if (@match_keys) {
+    if (@match_keys and $self->autoadd) {
         $msg .= "\tor an acceptable parameter matching '" . join( "','", @match_keys ) . "'\n";
     }
 
@@ -370,27 +403,33 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::WarpError 2.145;
+package Config::Model::Exception::WarpError;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'warp error'}
+sub _desc {
+    return 'warp error';
+}
 
-package Config::Model::Exception::Fatal 2.145;
+package Config::Model::Exception::Fatal;
 
 use Mouse;
 extends 'Config::Model::Exception::Any';
 
-sub _desc { 'fatal error' }
+sub _desc {
+    return 'fatal error' ;
+}
 
 
-package Config::Model::Exception::UnknownId 2.145;
+package Config::Model::Exception::UnknownId;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'unknown identifier'}
+sub _desc {
+    return 'unknown identifier';
+}
 
 has [qw/element id function where/] => (is => 'rw', isa => 'Str');
 
@@ -419,20 +458,24 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::WrongValue 2.145;
+package Config::Model::Exception::WrongValue;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'wrong value'};
+sub _desc {
+    return 'wrong value'};
+;
 
 
-package Config::Model::Exception::WrongType 2.145;
+package Config::Model::Exception::WrongType;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'wrong element type' };
+sub _desc {
+    return 'wrong element type' };
+;
 
 has [qw/function got_type/] => (is => 'rw', isa => 'Str');
 has [qw/expected_type/] => (is => 'rw');
@@ -461,21 +504,25 @@ sub full_message {
     return $msg;
 }
 
-package Config::Model::Exception::ConfigFile 2.145;
+package Config::Model::Exception::ConfigFile;
 
 use Mouse;
 extends 'Config::Model::Exception::User';
 
-sub _desc { 'error in configuration file' }
+sub _desc {
+    return 'error in configuration file' ;
+}
 
-package Config::Model::Exception::ConfigFile::Missing 2.145;
+package Config::Model::Exception::ConfigFile::Missing;
 
 use Mouse;
 use Mouse::Util::TypeConstraints;
 
 extends 'Config::Model::Exception::ConfigFile';
 
-sub _desc { 'missing configuration file'}
+sub _desc {
+    return 'missing configuration file';
+}
 
 subtype 'ExcpPathTiny', as 'Object', where {$_->isa('Path::Tiny')} ;
 
@@ -487,37 +534,29 @@ sub full_message {
     return "Error: cannot find configuration file " . $self->file . "\n";
 }
 
-package Config::Model::Exception::Formula 2.145;
+package Config::Model::Exception::Formula;
 
 use Mouse;
 extends 'Config::Model::Exception::Model';
 
-sub _desc { 'error in computation formula of the configuration model'}
+sub _desc {
+    return 'error in computation formula of the configuration model';
+}
 
-package Config::Model::Exception::Internal 2.145;
+package Config::Model::Exception::Internal;
 
 use Mouse;
 extends 'Config::Model::Exception::Fatal';
 
-sub _desc { 'internal error' }
+sub _desc {
+    return 'internal error' ;
+}
 
 1;
 
 # ABSTRACT: Exception mechanism for configuration model
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Exception - Exception mechanism for configuration model
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -529,6 +568,7 @@ version 2.145
       error  => "Went kaboom",
       object => $self
   ) if $kaboom;
+
 
 =head1 DESCRIPTION
 
@@ -568,17 +608,5 @@ L<Config::Model>,
 L<Config::Model::Instance>, 
 L<Config::Model::Node>,
 L<Config::Model::Value>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

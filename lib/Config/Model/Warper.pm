@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Warper 2.145;
+package Config::Model::Warper;
 
 use Mouse;
 
@@ -224,6 +215,7 @@ sub refresh_values_from_master {
 
         my $warper = $self->warped_object->grab(
             step => $warper_path,
+            grab_non_available => 1,
             mode => 'loose',
         );
 
@@ -613,18 +605,6 @@ __PACKAGE__->meta->make_immutable;
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Warper - Warp tree properties
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  # internal class 
@@ -697,6 +677,7 @@ is applied. In this case, rules is a list ref:
   rules => [ '$m eq "A"'               => { <effect for macro1 == A> },
              '$m eq "B" or $m eq"C "'  => { <effect for macro1 == B|C > }
            ]
+
 
 In case of several warp masters, C<follow> must use named parameters, and
 rules must use boolean expression:
@@ -789,6 +770,7 @@ be shown or not (assuming C<FooClass> and C<BarClass> classes are declared):
         }
     ]
 
+
 =head1 Methods
 
 =head2 warp_error
@@ -811,6 +793,9 @@ The other values accepted by the warp master that can be tried (if the
 warp master is an enumerated type)
 
 =back
+
+=cut
+
 
 =head1 How does this work ?
 
@@ -871,16 +856,5 @@ L<Config::Model::ListId>,
 L<Config::Model::WarpedNode>,
 L<Config::Model::Value>
 
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
-
 =cut
+

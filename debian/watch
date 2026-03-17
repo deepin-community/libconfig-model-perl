@@ -1,2 +1,5 @@
-version=4
-https://metacpan.org/release/Config-Model .*/Config-Model-?(\d[\d.-]+)\.(?:tar(?:\.gz|\.bz2)?|tgz|zip)$
+Version: 5
+
+Template: GitHub
+Owner: dod38fr
+Project: config-model

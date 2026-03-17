@@ -1,26 +1,22 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Instance 2.145;
+package Config::Model::Instance;
 
-#use Scalar::Util qw(weaken) ;
+use 5.20.0;
+
 use strict;
+use warnings ;
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
 
-use 5.10.1;
 use Mouse;
 use Mouse::Util::TypeConstraints;
 use MouseX::StrictConstructor;
 with "Config::Model::Role::NodeLoader";
+with "Config::Model::Role::Utils";
 
 use File::Path;
 use Path::Tiny;
 use Log::Log4perl qw(get_logger :levels);
+use Carp qw/carp croak confess cluck/;
 
 use Config::Model::TypeConstraints;
 use Config::Model::Exception;
@@ -30,12 +26,9 @@ use Config::Model::SearchElement;
 use Config::Model::Iterator;
 use Config::Model::ObjTreeScanner;
 
-use warnings ;
-
-use Carp qw/carp croak confess cluck/;
-
 my $logger        = get_logger("Instance");
 my $change_logger = get_logger("Anything::Change");
+my $user_logger = get_logger("User");
 
 has [qw/root_class_name/] => ( is => 'ro', isa => 'Str', required => 1 );
 
@@ -88,7 +81,7 @@ has appli_info => (
 
 
 # preset mode:  to load values found by HW scan or other automatic scheme
-# layered mode: to load values found in included files (e.g. a la multistrap)
+# layered mode: to load values found in included files
 # canonical mode: write config data back using model order instead of user order
 has [qw/preset layered canonical/] => (
     is      => 'ro',
@@ -104,24 +97,13 @@ has changes => (
     handles => {
         add_change => 'push',
         c_count    => 'count',
+        has_changes => 'count',
 
         #needs_save => 'count' ,
         clear_changes => 'clear',
     } );
 
-sub needs_save {
-    my $self = shift;
-    my $arg  = shift;
-    if ( defined $arg ) {
-        if ($arg) {
-            carp "replace needs_save(1) call with add_change";
-            $self->add_change();    # may not work
-        }
-        else {
-            carp "replace needs_save(0) call with clear_changes";
-            $self->clear_changes;
-        }
-    }
+sub needs_save ($self) {
     return $self->c_count;
 }
 
@@ -141,6 +123,7 @@ has errors => (
 sub add_error {
     my $self = shift;
     $self->_set_error( shift, '' );
+    return;
 }
 
 sub error_messages {
@@ -206,6 +189,7 @@ has initial_load => (
 sub _trace_initial_load {
     my ( $self, $n, $o ) = @_;
     $logger->debug("switched to $n");
+    return;
 }
 
 # This array holds a set of sub ref that will be invoked when
@@ -229,10 +213,11 @@ has _write_back => (
 sub register_write_back {
     my ($self, $path, $backend, $wb) = @_;
     push @{ $self->_write_back->{$path} //= [] }, [$backend, $wb];
+    return;
 }
 
 # used for auto_read auto_write feature
-has [qw/name application backend backend_arg backup/] => (
+has [qw/name application backend_arg backup/] => (
     is  => 'ro',
     isa => 'Maybe[Str]',
 );
@@ -295,12 +280,14 @@ sub preset_start {
     carp "Cannot start preset mode during layered mode"
         if $self->{layered};
     $self->{preset} = 1;
+    return;
 }
 
 sub preset_stop {
     my $self = shift;
     $logger->info("Stopping preset mode");
     $self->{preset} = 0;
+    return;
 }
 
 sub preset_clear {
@@ -312,6 +299,7 @@ sub preset_clear {
     };
 
     $self->_stuff_clear($leaf_cb);
+    return;
 }
 
 sub layered_start {
@@ -320,12 +308,14 @@ sub layered_start {
     carp "Cannot start layered mode during preset mode"
         if $self->{preset};
     $self->{layered} = 1;
+    return;
 }
 
 sub layered_stop {
     my $self = shift;
     $logger->info("Stopping layered mode");
     $self->{layered} = 0;
+    return;
 }
 
 sub layered_clear {
@@ -337,6 +327,7 @@ sub layered_clear {
     };
 
     $self->_stuff_clear($leaf_cb);
+    return;
 }
 
 sub get_data_mode {
@@ -370,7 +361,6 @@ sub _stuff_clear {
     };
 
     my $wiper = Config::Model::ObjTreeScanner->new(
-        fallback        => 'all',
         auto_vivify     => 0,
         check           => 'skip',
         leaf_cb         => $leaf_cb,
@@ -380,27 +370,24 @@ sub _stuff_clear {
 
     $wiper->scan_node( undef, $self->config_root );
 
+    return;
 }
 
-sub modify {
-    my $self = shift ;
-    my %args   = @_ eq 1 ? ( step => $_[0] ) : @_;
+sub modify ($self, @args) {
+    my %args = _resolve_arg_shortcut(\@args, 'step');
     my $force = delete $args{force_save} || delete $args{force};
-    $self->load(%args)->write_back( force => $force );
+    my $quiet = delete $args{quiet};
+    $self->load(%args);
+    $self->say_changes() unless $quiet;
+    $self->write_back( force => $force );
     return $self;
 }
 
-sub load {
-    my $self   = shift;
+sub load ($self, @args) {
+    my %args = _resolve_arg_shortcut(\@args, 'step');
     my $loader = Config::Model::Loader->new( start_node => $self->config_root );
-    my %args   = @_ eq 1 ? ( step => $_[0] ) : @_;
     $loader->load( %args );
     return $self;
-}
-
-sub search_element {
-    my $self = shift;
-    $self->config_root->search_element(@_);
 }
 
 sub wizard_helper {
@@ -408,10 +395,7 @@ sub wizard_helper {
     goto &iterator;
 }
 
-sub iterator {
-    my $self = shift;
-    my @args = @_;
-
+sub iterator ($self, @args) {
     my $tree_root = $self->config_root;
 
     return Config::Model::Iterator->new( root => $tree_root, @args );
@@ -435,9 +419,7 @@ sub write_root_dir {
 }
 
 # FIXME: record changes to implement undo/redo ?
-sub notify_change {
-    my $self = shift;
-    my %args = @_;
+sub notify_change ($self, %args) {
     if ( $change_logger->is_debug ) {
         $change_logger->debug( "in instance ", $self->name, ' for path ', $args{path} );
     }
@@ -452,6 +434,7 @@ sub notify_change {
 
     $self->add_change( \%args );
     $self->on_change_cb->( %args );
+    return;
 }
 
 sub _truncate {
@@ -501,18 +484,20 @@ sub list_changes {
 sub say_changes {
     my $self    = shift;
     my @changes = $self->list_changes;
-    say "\n",
-        join( "\n- ", "Changes applied to " . ($self->application // $self->name) . " configuration:", @changes ),
-        "\n"
-        if @changes;
-    return @changes;
+    return $self unless @changes;
+
+    my $msg =  "\n" .
+        join( "\n- ", "Changes applied to " . ($self->application // $self->name) . " configuration:", @changes ) .
+        "\n";
+
+    $user_logger->info($msg);
+    return $self;
 }
 
-sub write_back {
-    my $self = shift;
+sub write_back ($self, @args) {
     my %args =
-          scalar @_ > 1 ? @_
-        : scalar @_ == 1 ? ( config_dir => $_[0] )
+          scalar @args > 1  ? @args
+        : scalar @args == 1 ? ( config_dir => $args[0] )
         :                  ();
 
     my $force_write   = delete $args{force}   || 0;
@@ -532,9 +517,9 @@ sub write_back {
     foreach my $k ( keys %args ) {
         if ($k eq 'config_dir') {
             $args{$k} ||= '';
-            $args{$k} .= '/' if $args{$k} and $args{$k} !~ m(/$);
+            $args{$k} .= '/' if $args{$k} and $args{$k} !~ m!/$!;
         }
-        elsif ( $k !~ /^(config_file|backend)$/ ) {
+        elsif ( $k ne 'config_file' ) {
             croak "write_back: wrong parameters $k";
         }
     }
@@ -559,14 +544,11 @@ sub write_back {
         $self->_write_back_node(%args, path => $path, force_write => $force_write) ;
     }
     $self->clear_changes;
+    return;
 }
 
-sub _write_back_node {
-    my $self = shift;
-    my %args = @_;
-
+sub _write_back_node ($self, %args) {
     my $path = delete $args{path};
-    my $force_backend = delete $args{backend} || $self->{backend};
     my $force_write   = delete $args{force_write};
 
     my $node = $self->config_root->grab(
@@ -582,7 +564,6 @@ sub _write_back_node {
         my @wb_args = (
             %args,
             config_file   => $self->{config_file},
-            force_backend => $force_backend,
             force         => $force_write,
             backup        => $self->backup,
         );
@@ -591,17 +572,10 @@ sub _write_back_node {
             my $dir = $args{config_dir};
             mkpath( $dir, 0, oct(755) ) if $dir and not -d $dir;
 
-            my $res ;
-            if (not $force_backend
-                or $force_backend eq $backend
-                or $force_backend eq 'all' ) {
-
-                # exit when write is successfull
-                my $res = $cb->(@wb_args);
-                $logger->info( "write_back called with $backend backend, result is ",
-                               defined $res ? $res : '<undef>' );
-                last if ( $res and not $force_backend );
-            }
+            # exit when write is successfull
+            my $res = $cb->(@wb_args);
+            $logger->info( "write_back called with $backend backend, result is ",
+                           defined $res ? $res : '<undef>' );
         }
 
         if (not defined $node) {
@@ -612,6 +586,7 @@ sub _write_back_node {
     }
 
     $logger->trace( "write_back on node '$path' done" );
+    return;
 }
 
 sub save {
@@ -621,22 +596,28 @@ sub save {
 sub update {
     my ($self, %args) = @_;
 
-    my @msgs ;
     my $hook = sub {
         my ($scanner, $data_ref,$node,@element_list) = @_;
         if ($node->can('update')) {
             my $loc = $node->location;
             say "Calling update on node '$loc'" if $loc and not $args{quiet};
-            push (@msgs, $node->update(%args))
+            push (@$data_ref, $node->update(%args))
         } ;
+    };
+
+    my $leaf_cb = sub ($scanner, $data_ref,$node,$element_name,$index, $leaf_object) {
+        push @$data_ref, $leaf_object->update_from_file();
     };
 
     my $root = $self->config_root ;
 
+    my @msgs ;
     Config::Model::ObjTreeScanner->new(
         node_content_hook => $hook,
         check => ($args{quiet} ? 'no' : 'yes'),
-        leaf_cb => sub { }
+        leaf_cb => $leaf_cb,
+        file_value_cb => $leaf_cb,
+        dir_value_cb => $leaf_cb,
     )->scan_node( \@msgs, $root );
 
     return @msgs;
@@ -645,6 +626,7 @@ sub update {
 sub DEMOLISH {
     my $self = shift;
     $self->clear_write_back; # avoid reference loops
+    return;
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -654,18 +636,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Instance of configuration tree
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Instance - Instance of configuration tree
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -696,6 +666,8 @@ version 2.145
  my $root = $inst -> config_root ;
 
  print $root->describe;
+
+
 
 =head1 DESCRIPTION
 
@@ -743,10 +715,6 @@ directory if C<root_dir> is empty.
 
 Directory to read or write configuration file. This parameter must be
 supplied if not provided by the configuration model. (string)
-
-=item backend
-
-Specify which backend to use. See L</write_back> for details
 
 =item backend_arg
 
@@ -814,8 +782,20 @@ C<< check => 'no' >> ).
 
 Calls L</"load"> and then L</save>.
 
-Takes the same parameter as C<load> plus C<force_write> to force
-saving configuration file even if no value was modified (default is 0)
+Takes the same parameter as C<load> plus:
+
+=over
+
+=item C<force_write>
+
+Force saving configuration file even if no value was modified
+(default is 0)
+
+=item C<quiet>
+
+Do no display the changes brought by the modification steps
+
+=back
 
 =head2 load
 
@@ -849,14 +829,18 @@ list element have this feature.
 Returns 1 (or more) if the instance contains data that needs to be
 saved. I.e some change were done in the tree that needs to be saved.
 
+=head2 has_changes
+
+Returns true if the instance contains unsasved changes.
+
 =head2 list_changes
 
-In list context, returns a array ref of strings describing the changes. 
+In list context, returns a array ref of strings describing the changes.
 In scalar context, returns a big string. Useful to print.
 
 =head2 say_changes
 
-Print all changes on STDOUT and return the list of changes.
+Print all changes on STDOUT and return C<$self>.
 
 =head2 clear_changes
 
@@ -872,9 +856,22 @@ Returns the number of warning found in the elements of this configuration instan
 
 Parameters: C<< ( quiet => (0|1), %args ) >>
 
-Try to run update command on all nodes of the configuration tree. Node
-without C<update> method are ignored. C<update> prints a message
-otherwise (unless C<quiet> is true).
+Try to run C<update> method on all nodes and leaves of the
+configuration tree.
+
+Node without C<update> method are ignored. C<update> prints a
+message otherwise (unless C<quiet> is true). Note that plain
+L<Config::Model::Node> has no C<update> method. Only classes
+inheriting from L<Config::Model::Node> can have C<update> methods.
+
+C<update> is called on all leaves. L<Config::Model::Values/update> is
+called as well to update value from external files, like INI or YAML
+file, according to the user's configuration model.
+
+The goal of the update method is to update configuration data from
+external data. For instance, update is called on
+C<Config::Model::Dpkg::Copyright> nodes to udpate copyright data from
+sources files.
 
 =head2 grab
 
@@ -1026,11 +1023,6 @@ This feature enables you to declare with the model a way to load
 configuration data (and to write it back). See
 L<Config::Model::BackendMgr> for details.
 
-=head2 backend
-
-Get the preferred backend method for this instance (as passed to the
-constructor).
-
 =head2 backend_arg
 
 Get L<cme> command line argument that may be used by the backend to
@@ -1064,7 +1056,7 @@ L<Config::Model::AnyThing/notify_change> for more details.
 In summary, save the content of the configuration tree to
 configuration files.
 
-In more details, C<write_back> trie to run all subroutines registered
+In more details, C<write_back> tries to run all subroutines registered
 with C<register_write_back> to write the configuration information.
 (See L<Config::Model::BackendMgr> for details).
 
@@ -1089,17 +1081,5 @@ L<Config::Model::Node>,
 L<Config::Model::Loader>,
 L<Config::Model::Searcher>,
 L<Config::Model::Value>,
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

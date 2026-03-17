@@ -1,17 +1,12 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Backend::Fstab 2.145;
+package Config::Model::Backend::Fstab;
 
 use Mouse;
 use Carp;
 use Log::Log4perl qw(get_logger :levels);
+use 5.020;
+
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
 
 extends 'Config::Model::Backend::Any';
 
@@ -26,10 +21,8 @@ my %opt_r_translate = (
     minixdf => 'statfs_behavior=minixdf',
 );
 
-sub read {
-    my $self = shift;
-    my %args = @_;
-
+## no critic (Subroutines::ProhibitBuiltinHomonyms)
+sub read ($self, %args) {
     # args are:
     # root       => './my_test',  # fake root directory, userd for tests
     # config_dir => /etc/foo',    # absolute path
@@ -87,10 +80,7 @@ sub read {
     return 1;
 }
 
-sub write {
-    my $self = shift;
-    my %args = @_;
-
+sub write ($self, %args) {
     # args are:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -123,9 +113,7 @@ sub write {
 
 my %rev_opt_r_translate = reverse %opt_r_translate;
 
-sub option_string {
-    my ( $self, $obj ) = @_;
-
+sub option_string ($self, $obj) {
     my @options;
     foreach my $opt ( $obj->get_element_name ) {
         my $v = $obj->fetch_element_value($opt);
@@ -150,18 +138,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Read and write config from fstab file
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Backend::Fstab - Read and write config from fstab file
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -215,17 +191,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>, 
 L<Config::Model::BackendMgr>, 
 L<Config::Model::Backend::Any>, 
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Backend::PlainFile 2.145;
+package Config::Model::Backend::PlainFile;
 
 use 5.10.1;
 use Carp;
@@ -21,6 +12,9 @@ extends 'Config::Model::Backend::Any';
 with "Config::Model::Role::ComputeFunction";
 with "Config::Model::Role::FileHandler";
 
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
+
 my $logger = get_logger("Backend::PlainFile");
 
 sub annotation { return 0; }
@@ -31,7 +25,7 @@ sub annotation { return 0; }
 
 # file not opened by BackendMgr
 # file_path is undef
-sub skip_open { 1; }
+sub skip_open { return 1; }
 
 sub get_file_name {
     my ($self, %args) = @_;
@@ -40,10 +34,8 @@ sub get_file_name {
     return $args{file} ? $obj->compute_string($args{file}) : $args{elt};
 }
 
-sub read {
-    my $self = shift;
-    my %args = @_;
-
+## no critic (Subroutines::ProhibitBuiltinHomonyms)
+sub read ($self, %args) {
     # args are:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -65,7 +57,7 @@ sub read {
         my $dir = $self->get_tuned_config_dir(%args);
         my $file = $dir->child($file_name);
 
-        $logger->trace("looking for plainfile $file for ", $obj->location);
+        $logger->trace("looking to read plainfile $file for ", $obj->location);
 
         my $type = $obj->get_type;
 
@@ -99,6 +91,7 @@ sub read_leaf {
         $logger->trace("storing leaf value '$str' from $file ");
     }
     $obj->store( value => $v, check => $check );
+    return;
 }
 
 sub read_list {
@@ -110,17 +103,16 @@ sub read_list {
     $logger->trace("storing list value @v from $file ");
 
     $obj->store_set(@v);
+    return;
 }
 
 sub read_hash {
     my ( $self, $obj, $elt, $check, $file, $args ) = @_;
     $logger->debug("PlainFile read skipped hash $elt");
+    return;
 }
 
-sub write {
-    my $self = shift;
-    my %args = @_;
-
+sub write ($self, %args){
     # args are:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -143,6 +135,8 @@ sub write {
 
         my $file_name = $self->get_file_name(%args, elt => $elt);
         my $file = $dir->child($file_name);
+
+        $logger->trace("looking to write plainfile $file for ", $obj->location);
 
         my $type = $obj->get_type;
         my @v;
@@ -174,10 +168,8 @@ sub write {
     return 1;
 }
 
-sub delete {
-    my $self = shift;
-    my %args = @_;
-
+## no critic (Subroutines::ProhibitBuiltinHomonyms)
+sub delete ($self, %args) {
     # args are:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -199,6 +191,7 @@ sub delete {
         $logger->info( "Removing $file (deleted node)" );
         $file->remove;
     }
+    return;
 }
 
 no Mouse;
@@ -209,18 +202,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Read and write config as plain file
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Backend::PlainFile - Read and write config as plain file
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -341,17 +322,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>, 
 L<Config::Model::BackendMgr>, 
 L<Config::Model::Backend::Any>, 
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

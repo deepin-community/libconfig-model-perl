@@ -1,0 +1,7 @@
+---
+t/backend_multiple.t:
+  comment: license check trips on copyright mention in this file
+  skip: true
+debian/README.source.org:
+  comment: license check trips on copyright mention in this file
+  skip: true

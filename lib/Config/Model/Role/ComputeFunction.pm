@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Role::ComputeFunction 2.145;
+package Config::Model::Role::ComputeFunction;
 
 # ABSTRACT: compute &index or &element functions
 
@@ -80,18 +71,6 @@ sub eval_function {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Role::ComputeFunction - compute &index or &element functions
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  $value->eval_function('index');
@@ -141,16 +120,6 @@ function names are extracted.
 
 E.g. C<compute_string('&element(-)')> calls C<eval_function('element','-')>
 
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut
+
