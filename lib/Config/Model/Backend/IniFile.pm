@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Backend::IniFile 2.145;
+package Config::Model::Backend::IniFile;
 
 use Carp;
 use Mouse;
@@ -18,14 +9,20 @@ use Log::Log4perl qw(get_logger :levels);
 
 use base qw/Config::Model::Backend::Any/;
 
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
+
+# change inherited attribute. See Moose::Manual::Attributes
+has '+node' => (
+    handles => ['load_data'],
+);
+
 my $logger = get_logger("Backend::IniFile");
 
 sub annotation { return 1; }
 
-sub read {
-    my $self = shift;
-    my %args = @_;
-
+## no critic (Subroutines::ProhibitBuiltinHomonyms)
+sub read ($self, %args) {
     # args is:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -143,11 +140,6 @@ sub read {
     return 1;
 }
 
-sub load_data {
-    my $self = shift;
-    $self->node->load_data(@_);
-}
-
 sub set_or_push {
     my ( $self, $ref, $name, $val ) = @_;
     my $cell = $ref->{$name};
@@ -167,10 +159,8 @@ sub set_or_push {
     return $path;
 }
 
-sub write {
-    my $self = shift;
-    my %args = @_;
-
+## no critic (Subroutines::ProhibitBuiltinHomonyms)
+sub write ($self, %args) {
     # args is:
     # object     => $obj,         # Config::Model::Node object
     # root       => './my_test',  # fake root directory, userd for tests
@@ -204,6 +194,7 @@ sub write {
     elsif ($self->auto_delete) {
         $args{file_path}->remove;
     }
+    return;
 }
 
 sub _write_list{
@@ -356,10 +347,7 @@ sub _write_node {
     return $res;
 }
 
-sub _write {
-    my $self = shift;
-    my %args = @_;
-
+sub _write ($self, %args) {
     my $node          = $args{object};
     my $delimiter     = $args{comment_delimiter} || '#';
 
@@ -419,18 +407,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Read and write config as a INI file
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Backend::IniFile - Read and write config as a INI file
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -669,7 +645,7 @@ elements. For instance:
 
 In this case, class C<A> and class C<B> do not use the same configuration class.
 The model has this structure:
-
+   
  Root class 
  |- leaf foo
  \- hash element my_class_holder
@@ -688,7 +664,7 @@ parameter:
       store_class_in_hash => 'my_class_holder',
     }
 
-Of course they are exceptions. For instance, in C<Multistrap>, the C<[General]> 
+Of course they are exceptions. For instance, in late C<Multistrap>, the C<[General]> 
 INI class must be mapped to a specific node object. This can be specified
 with the C<section_map> parameter: 
 
@@ -765,17 +741,5 @@ Krzysztof Tyszecki, (krzysztof.tyszecki at gmail dot com)
 L<Config::Model>, 
 L<Config::Model::BackendMgr>, 
 L<Config::Model::Backend::Any>, 
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

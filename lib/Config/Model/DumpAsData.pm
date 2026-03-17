@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::DumpAsData 2.145;
+package Config::Model::DumpAsData;
 
 use Carp;
 use strict;
@@ -126,7 +117,6 @@ sub dump_as_data {
 
     my @scan_args = (
         check      => delete $args{check}      || 'yes',
-        fallback   => 'all',
         auto_vivify           => $auto_v,
         list_element_cb       => $list_element_cb,
         check_list_element_cb => $check_list_element_cb,
@@ -217,7 +207,6 @@ sub dump_annotations_as_pod {
 
     my @scan_args = (
         check      => delete $args{check}      || 'yes',
-        fallback   => 'all',
         leaf_cb    => $std_cb,
         node_content_cb => $node_content_cb,
         hash_element_cb => $hash_element_cb,
@@ -253,18 +242,6 @@ sub dump_annotations_as_pod {
 # ABSTRACT: Dump configuration content as a perl data structure
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::DumpAsData - Dump configuration content as a perl data structure
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -438,17 +415,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 =head1 SEE ALSO
 
 L<Config::Model>,L<Config::Model::Node>,L<Config::Model::ObjTreeScanner>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

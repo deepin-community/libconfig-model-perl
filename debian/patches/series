@@ -1,2 +1,4 @@
 #fix-cryptic-message
+rm-git-from-dzil
 fix-debci
+fix-debci-load

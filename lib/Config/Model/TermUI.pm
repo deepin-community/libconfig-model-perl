@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::TermUI 2.145;
+package Config::Model::TermUI;
 
 use Carp;
 use utf8;      # so literals and identifiers can be in UTF-8
@@ -158,18 +149,19 @@ my $node_completion_sub = sub {
 };
 
 my %completion_dispatch = (
-    cd     => $cd_completion_sub,
-    desc   => $completion_sub,
-    ll     => $ll_completion_sub,
-    ls     => $path_completion_sub,
-    tree   => $node_completion_sub,
-    info   => $path_completion_sub,
-    check  => $completion_sub,
-    fix    => $fix_completion_sub,
-    clear  => $completion_sub,
-    set    => $leaf_completion_sub,
-    delete => $leaf_completion_sub,
-    reset  => $completion_sub,
+    cd      => $cd_completion_sub,
+    desc    => $completion_sub,
+    display => $completion_sub,
+    ll      => $ll_completion_sub,
+    ls      => $path_completion_sub,
+    tree    => $node_completion_sub,
+    info    => $path_completion_sub,
+    check   => $completion_sub,
+    fix     => $fix_completion_sub,
+    clear   => $completion_sub,
+    set     => $leaf_completion_sub,
+    delete  => $leaf_completion_sub,
+    reset   => $completion_sub,
 );
 
 sub completion {
@@ -263,8 +255,8 @@ sub run_loop {
 
     my $instance = $self->{root}->instance;
     if ( $instance->c_count ) {
-        my @changes = $instance->say_changes;
-        if (@changes) {
+        if ($instance->has_changes) {
+            $instance->say_changes;
             $user_cmd = $term->readline("write back data before exit ? (Y/n)");
             $instance->write_back unless $user_cmd =~ /n/i;
             print "\n";
@@ -277,18 +269,6 @@ sub run_loop {
 # ABSTRACT: Interactive command line interface for cme
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::TermUI - Interactive command line interface for cme
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -454,17 +434,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 L<Config::Model>,
 L<Config::Model::Instance>,
 L<Config::Model::Node>,
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

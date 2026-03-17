@@ -10,7 +10,7 @@ Forwarded: NA
 Author: dod
 --- a/lib/Config/Model/Lister.pm
 +++ b/lib/Config/Model/Lister.pm
-@@ -22,7 +22,7 @@
+@@ -13,7 +13,7 @@
  
      my ( %categories, %appli_info, %applications );
      my %done_cat;

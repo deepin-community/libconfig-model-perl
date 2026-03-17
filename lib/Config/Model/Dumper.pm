@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Dumper 2.145;
+package Config::Model::Dumper;
 
 use Carp;
 use strict;
@@ -220,7 +211,6 @@ sub dump_tree {
     };
 
     my @scan_args = (
-        fallback => 'all',
         auto_vivify           => $auto_v,
         list_element_cb       => $list_element_cb,
         hash_element_cb       => $hash_element_cb,
@@ -251,18 +241,6 @@ sub dump_tree {
 # ABSTRACT: Serialize data of config tree
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Dumper - Serialize data of config tree
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -304,6 +282,7 @@ version 2.145
 
  # dump only customized data
  print $root->dump_tree;
+
 
 =head1 DESCRIPTION
 
@@ -390,17 +369,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 =head1 SEE ALSO
 
 L<Config::Model>,L<Config::Model::Node>,L<Config::Model::Loader>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

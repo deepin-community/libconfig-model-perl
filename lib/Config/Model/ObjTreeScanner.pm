@@ -1,40 +1,40 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::ObjTreeScanner 2.145;
+package Config::Model::ObjTreeScanner;
 
+use 5.20.0;
 use strict;
-use Config::Model::Exception;
-use Scalar::Util qw/blessed/;
-use Carp::Assert::More;
-use Carp;
 use warnings;
 
-use Carp qw/croak confess cluck/;
+use Config::Model::Exception;
+use Scalar::Util qw/blessed/;
+use Log::Log4perl qw(get_logger :levels);
+use Carp qw/carp croak confess cluck/;
+use Carp::Assert::More;
 
-sub new {
-    my $type = shift;
-    my %args = @_;
+use feature qw/postderef signatures/;
+no warnings qw/experimental::signatures experimental::postderef/;
 
+my $logger = get_logger("ObjTreeScanner");
+
+my @value_cb =
+    map { $_ . '_value_cb' } qw/boolean dir enum file string uniline integer number reference/;
+
+sub new ($type, %args) {
     my $self = { auto_vivify => 1, check => 'yes' };
     bless $self, $type;
 
     $self->{leaf_cb} = delete $args{leaf_cb}
         or croak __PACKAGE__, "->new: missing leaf_cb parameter";
 
+    # TODO: switch to warning in 2027
+    if (delete $args{fallback}) {
+        my ($package, $filename, $line) = caller;
+        $logger->info("fallback parameter is deprecated. Called from $filename:$line");
+    }
+
     # we may use leaf_cb
-    $self->create_fallback( delete $args{fallback} || 'all' );
+    $self->create_default_callbacks();
 
     # get all call_backs
-    my @value_cb =
-        map { $_ . '_value_cb' } qw/boolean enum string uniline integer number reference/;
-
     foreach my $param (
         qw/check node_element_cb hash_element_cb
         list_element_cb check_list_element_cb node_content_cb
@@ -45,10 +45,6 @@ sub new {
         delete $args{$param};    # may exists but be undefined
         croak __PACKAGE__, "->new: missing $param parameter"
             unless defined $self->{$param};
-    }
-
-    if (delete $args{experience}) {
-        carp "->new: experience parameter is deprecated";
     }
 
     # this parameter is optional and does not need a fallback
@@ -67,25 +63,15 @@ sub new {
 }
 
 # internal
-sub create_fallback {
-    my $self     = shift;
-    my $fallback = shift;
+sub create_default_callbacks ($self) {
+    foreach my $item (qw/node_content_hook hash_element_hook list_element_hook/) {
+        $self->{$item} = sub { };
+    }
 
-    map {
-        $self->{$_} =
-            sub { }
-    } qw/node_content_hook hash_element_hook list_element_hook/;
-
-    return if not defined $fallback or $fallback eq 'none';
-
-    my $done = 0;
-
-    if ( $fallback eq 'node' or $fallback eq 'all' ) {
-        $done++;
-        my $node_content_cb = sub {
-            my ( $scanner, $data_r, $node, @element ) = @_;
-            map { $scanner->scan_element( $data_r, $node, $_ ) } @element;
-        };
+    my $node_content_cb = sub {
+        my ( $scanner, $data_r, $node, @elements ) = @_;
+        foreach my $item (@elements) { $scanner->scan_element( $data_r, $node, $item ) };
+    };
 
         my $node_element_cb = sub {
             my ( $scanner, $data_r, $node, $element_name, $key, $next_node ) = @_;
@@ -94,7 +80,7 @@ sub create_fallback {
 
         my $hash_element_cb = sub {
             my ( $scanner, $data_r, $node, $element_name, @keys ) = @_;
-            map { $scanner->scan_hash( $data_r, $node, $element_name, $_ ) } @keys;
+            foreach my $item (@keys) { $scanner->scan_hash( $data_r, $node, $element_name, $item ) };
         };
 
         $self->{list_element_cb} = $hash_element_cb;
@@ -102,24 +88,14 @@ sub create_fallback {
         $self->{node_element_cb} = $node_element_cb;
         $self->{node_content_cb} = $node_content_cb;
         $self->{up_cb}           = sub { };            # do nothing
+
+    my $l = $self->{string_value_cb} ||= $self->{leaf_cb};
+
+        foreach my $cb (@value_cb, "check_list_element_cb") {
+            $self->{$cb} ||= $l;
     }
 
-    if ( $fallback eq 'leaf' or $fallback eq 'all' ) {
-        $done++;
-        my $l = $self->{string_value_cb} ||= $self->{leaf_cb};
-
-        $self->{check_list_element_cb} ||= $l;
-        $self->{enum_value_cb}         ||= $l;
-        $self->{integer_value_cb}      ||= $l;
-        $self->{number_value_cb}       ||= $l;
-        $self->{boolean_value_cb}      ||= $l;
-        $self->{reference_value_cb}    ||= $l;
-        $self->{uniline_value_cb}      ||= $l;
-    }
-
-    croak __PACKAGE__, "->new: Unexpected fallback value '$fallback'. ",
-        "Expected 'node', 'leaf', 'all' or 'none'"
-        if not $done;
+    return;
 }
 
 sub scan_node {
@@ -152,6 +128,7 @@ sub scan_node {
     $actual_cb->( $self, $data_r, $node, @element_list );
 
     $self->{up_cb}->( $self, $data_r, $node );
+    return;
 }
 
 sub scan_element {
@@ -218,6 +195,7 @@ sub scan_element {
     else {
         croak "Unexpected element_type: $element_type";
     }
+    return;
 }
 
 sub scan_hash {
@@ -246,6 +224,7 @@ sub scan_hash {
     else {
         croak "Unexpected cargo_type: $cargo_type";
     }
+    return;
 }
 
 sub scan_list {
@@ -267,6 +246,7 @@ sub get_keys {
         object => $node
     );
 
+    return;
 }
 
 1;
@@ -274,18 +254,6 @@ sub get_keys {
 # ABSTRACT: Scan config tree and perform call-backs for each element or node
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::ObjTreeScanner - Scan config tree and perform call-backs for each element or node
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -400,7 +368,7 @@ hooks are listed below:
 C<leaf_cb> is a catch-all generic callback. All other are specialized
 call-back : C<enum_value_cb>, C<integer_value_cb>, C<number_value_cb>,
 C<boolean_value_cb>, C<string_value_cb>, C<uniline_value_cb>,
-C<reference_value_cb>
+C<reference_value_cb>, C<file_value_cb>, C<dir_value_cb>
 
 =item node callback:
 
@@ -422,7 +390,7 @@ C<list_element_hook>, C<hash_element_hook>.
 
 =back
 
-The user may specify all of them by passing a sub ref to the
+The user may specify callbacks them by passing a sub ref to the
 constructor:
 
    $scan = Config::Model::ObjTreeScanner-> new
@@ -431,8 +399,7 @@ constructor:
    ...
   )
 
-Or use some default callback using the fallback parameter. Note that
-at least one callback must be provided: C<leaf_cb>.
+C<leaf_cb> callback is mandatory. Other callbacks are provided by default.
 
 Optional parameter:
 
@@ -440,14 +407,8 @@ Optional parameter:
 
 =item fallback
 
-If set to C<node>, the scanner provides default call-back for node
-items. If set to C<leaf>, the scanner sets all leaf callback (like
-enum_value_cb ...) to string_value_cb or to the mandatory leaf_cb
-value. "fallback" callback does not override callbacks provided by the
-user.
-
-If set to C<all> , the scanner provides fallbacks for leaf and node. 
-By default, all fallback are provided.
+Deprecated with version 2.159. This parameter is now ignored and
+default callbacks are always provided.
 
 =item auto_vivify
 
@@ -519,7 +480,9 @@ Example:
      # custom code using $data_ref
 
      # resume exploration (if needed)
-     map {$scanner->scan_list($data_ref,$node,$element_name,$_)} @idx ;
+     foreach my $i (@idx){
+         $scanner->scan_list($data_ref,$node,$element_name,$i);
+     }
 
      # note: scan_list and scan_hash are equivalent
   }
@@ -555,7 +518,9 @@ Example:
      # custom code using $data_ref
 
      # resume exploration
-     map {$scanner->scan_hash($data_ref,$node,$element_name,$_)} @keys ;
+     foreach my $k (@keys) {
+         $scanner->scan_hash($data_ref,$node,$element_name,$key);
+     }
   }
 
 =head2 Hash element hook
@@ -575,12 +540,14 @@ C<@element_list> contains all the element names of the node.
 Example:
 
   sub my_content_cb {
-     my ($scanner, $data_ref,$node,@element) = @_ ;
+     my ($scanner, $data_ref,$node,@elements) = @_ ;
 
      # custom code using $data_ref
 
      # resume exploration
-     map {$scanner->scan_element($data_ref, $node,$_)} @element ;
+     foreach my $elt (@elements) {
+         $scanner->scan_element($data_ref, $node,$elt);
+     }
   }
 
 =head2 Node content hook
@@ -619,7 +586,9 @@ Example:
      # custom code using $data_ref
 
      # resume exploration
-     map {$scanner->scan_element($data_ref, $node,$_)} @element ;
+     foreach my $elt (@elements) {
+         $scanner->scan_element($data_ref, $node,$elt);
+     }
   }
 
 =head2 Node element callback
@@ -702,17 +671,5 @@ L<Config::Model::HashId>,
 L<Config::Model::ListId>,
 L<Config::Model::CheckList>,
 L<Config::Model::Value>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

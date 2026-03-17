@@ -1,3 +1,153 @@
+libconfig-model-perl (2.159-1) unstable; urgency=medium
+
+  * new upstream version
+    * ObjTreeScanner: deprecate fallback parameter to fix backward
+      compat issue
+    * Loader: update .foreach_match() pod doc
+
+ -- Dominique Dumont <dod@debian.org>  Mon, 09 Mar 2026 19:25:09 +0100
+
+libconfig-model-perl (2.158-1) unstable; urgency=medium
+
+  * new upstream version
+    * Remove obsolete Multistrap model
+    * Value model: add update parameter to specify how to load
+      value from INI, YAML, JSON or TOML file when running "cme update"
+      command
+    * Loader: add function to load data from INI files
+    * Node: can extract gist from a array element
+    * Loader: fix bug with function call like .b("bar","foo(a > b)")
+  * control:
+    * declare compliance with Debian policy 4.7.0
+    * add <!nocheck> to test dependencies
+    * drop obsolete Breaks field
+    * update dependencies:
+     * add suggested  libconfig-ini-perl, libtoml-tiny-perl and
+       libyaml-pp-perl
+     * drop libyaml-tiny-perl
+     * libjson-perl is now suggested
+  * add fill.copyright.blanks.yml
+  * copyright: refreshed with cme
+  * metadata: remove obsolete Contact field
+  * README.source.org: add --refresh option to quilt push -a
+  * install-docs: remove TODO file
+  * watch: update to version 5
+
+ -- Dominique Dumont <dod@debian.org>  Thu, 05 Mar 2026 19:07:32 +0100
+
+libconfig-model-perl (2.155-1) unstable; urgency=medium
+
+  [ Dominique Dumont ]
+  * new upstream version
+    * Loader: add .set_to_standard_value() function
+  * README.source.org: add missing step
+  * rules: skip test when running with nocheck
+  * rules: override_dh_clean removes only generated pod files
+
+ -- Dominique Dumont <dod@debian.org>  Sat, 30 Nov 2024 10:57:28 +0100
+
+libconfig-model-perl (2.154-1) unstable; urgency=medium
+
+  [ Dominique Dumont ]
+  * new upstream version
+  * update to build with dzil
+  * add README.source.org
+  * add patch to remove Git plugin from dist.ini
+
+ -- Dominique Dumont <dod@debian.org>  Sun, 16 Jun 2024 19:30:16 +0200
+
+libconfig-model-perl (2.153-3) unstable; urgency=medium
+
+  * Add patch to fix autopkgtest failure. (Closes: #1050059)
+  * Update years of packaging copyright.
+
+ -- gregor herrmann <gregoa@debian.org>  Sat, 19 Aug 2023 12:02:51 +0200
+
+libconfig-model-perl (2.153-2) unstable; urgency=medium
+
+  * control: add build dep on libtest-synopsis-expectation-perl
+
+ -- Dominique Dumont <dod@debian.org>  Thu, 20 Jul 2023 19:03:54 +0200
+
+libconfig-model-perl (2.153-1) unstable; urgency=medium
+
+  * New upstream version 2.153
+    * term_ui.t: fix test for Term::ReadLine::Gnu 1.46
+    * Loader: add support for single quotes
+  * control: declare compliance with policy 4.6.2
+  * control: remove obsolete depends or breaks versions
+  * remove old NEWS file
+
+ -- Dominique Dumont <dod@debian.org>  Wed, 19 Jul 2023 18:59:58 +0200
+
+libconfig-model-perl (2.152-1) unstable; urgency=medium
+
+  * New upstream version 2.152
+    * fix regression (Value) that broke the GUI: error_msg now
+      returns empty string when there's no error
+
+ -- Dominique Dumont <dod@debian.org>  Thu, 28 Jul 2022 11:39:37 +0200
+
+libconfig-model-perl (2.151-2) unstable; urgency=medium
+
+  * control: add breaks on libconfig-model-dpkg-perl (<<2.162)
+
+ -- Dominique Dumont <dod@debian.org>  Wed, 27 Jul 2022 18:33:29 +0200
+
+libconfig-model-perl (2.151-1) unstable; urgency=medium
+
+  * New upstream version 2.151
+    * fix (Value): do not check compute result with mandatory value
+      (related to #1015913)
+    * Node: apply_fixes now returns $self
+  * control: declare compliance with policy 4.6.1
+
+ -- Dominique Dumont <dod@debian.org>  Wed, 27 Jul 2022 17:44:18 +0200
+
+libconfig-model-perl (2.150-1) unstable; urgency=medium
+
+  * New upstream version 2.150
+    * Loader: add list:.ensure(value) function
+    * Loader: fix reading JSON file with utf8 characters
+  * control: add Breaks cme << 1.036
+
+ -- Dominique Dumont <dod@debian.org>  Tue, 10 May 2022 19:35:26 +0200
+
+libconfig-model-perl (2.149-1) unstable; urgency=medium
+
+  * New upstream version 2.149
+    * fix regression with check_value method
+
+ -- Dominique Dumont <dod@debian.org>  Fri, 14 Jan 2022 14:47:31 +0100
+
+libconfig-model-perl (2.148-1) unstable; urgency=medium
+
+  * New upstream version 2.148
+    * fix (Exception): avoid double crash (keep ref to instance object)
+    * fix (modify instance): show changes before saving
+  * updated copyright year of Dominique Dumont
+
+ -- Dominique Dumont <dod@debian.org>  Tue, 11 Jan 2022 12:42:16 +0100
+
+libconfig-model-perl (2.147-1) unstable; urgency=medium
+
+  * New upstream version 2.147
+    * fstab: add suid/nosuid (thanks Topi Miettinen)
+    * feat (fstab model): add umask element in common options
+    * feat (fstab model): add description to common options
+    * feat (Instance): modify method displays changes before saving
+    * fix (Grab): improve error message of grab_value
+    * fix (TermUI):  add completion to display command
+    * fix (SimpleUI): simplify error message shown to user
+    * fix (SimpleUI): avoid undef warnings
+    * fix (Describe): truncate long lines
+    * fix (Describe): show default value in comments
+    * fix (Describe): show value in user mode
+    * Value: accept on/off as boolean values
+  * control: set Rules-Requires-Root: no
+
+ -- Dominique Dumont <dod@debian.org>  Sun, 05 Dec 2021 19:53:42 +0100
+
 libconfig-model-perl (2.145-1) unstable; urgency=medium
 
   * New upstream version 2.145

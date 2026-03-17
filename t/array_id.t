@@ -3,15 +3,17 @@
 use ExtUtils::testlib;
 use Test::More;
 use Test::Exception;
-use Test::Warn;
 use Test::Differences;
 use Test::Memory::Cycle;
+use Test::Log::Log4perl;
 use Config::Model;
 use Config::Model::AnyId;
 
 use strict;
 use warnings;
 use Config::Model::Tester::Setup qw/init_test/;
+
+Test::Log::Log4perl->ignore_priority("info");
 
 my ($model, $trace) = init_test();
 
@@ -27,6 +29,7 @@ my @element = (
 # minimal set up to get things working
 $model->create_config_class(
     name    => "Master",
+    gist => '@{olist} olist elts, @{plain_list} plain_list elts',
     element => [
         bounded_list => {
             type       => 'list',
@@ -137,10 +140,14 @@ subtest "bounded list" => sub {
     ok( $b, "bounded list created" );
     is( $inst->needs_save, 0, "verify instance needs_save status after element creation" );
 
+    is($b->fetch_size, 0, "check size is zero");
+
+
     # each line triggers 2 changes: element creation and value storage
     is( $b->fetch_with_id(1)->store('foo'), 1, "stored in 1" );
     is( $b->fetch_with_id(0)->store('baz'), 1, "stored in 0" );
     is( $b->fetch_with_id(2)->store('bar'), 1, "stored in 2" );
+    is($b->fetch_size, 3, "check size after element creation");
     is( $inst->needs_save, 3, "verify instance needs_save status after storing into element" );
     print join( "\n", $inst->list_changes("\n") ), "\n" if $trace;
 
@@ -283,6 +290,9 @@ subtest "test move swap with node list" => sub {
     print $root->dump_tree( ) if $trace;
     is( $ol->fetch_with_id(0)->fetch_element('X')->fetch, 'Bv', "check after move" );
 
+    # test gist with
+    is($root->fetch_gist, "4 olist elts, 0 plain_list elts", "gist with array size");
+
     # test node gist in an array display
     my $olgist = $ol->fetch_with_id(5);
     $olgist->fetch_element('X')->store('Av');
@@ -375,12 +385,18 @@ foreach my $what (qw/forbid warn suppress/) {
             is( $lwd->needs_content_check, 1, "verify needs_content_check after list content modif" );
         }
         elsif ( $what eq 'warn' ) {
-            warnings_like { $lwd->fetch_all_values; } qr/Duplicated/, "warns with duplicated values";
+            {
+                my $tlog = Test::Log::Log4perl->expect([ 'User' =>  warn => qr/Duplicated/ ]);
+                $lwd->fetch_all_values;
+            }
             is ( $lwd->has_warning, 1, "detected duplicated values");
             is( $lwd->has_fixes, 2, "check nb of fixes" );
             $inst->apply_fixes;
-            warnings_like { $lwd->fetch_all_values; }[], # no warning accepted
-                "no longer warns with duplicated values";
+            {
+                # no warning expected
+                my $tlog = Test::Log::Log4perl->expect([]);
+                $lwd->fetch_all_values;
+            }
         }
         else {
             $lwd->check_content;

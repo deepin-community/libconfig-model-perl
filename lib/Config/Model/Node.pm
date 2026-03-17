@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Node 2.145;
+package Config::Model::Node;
 
 use Mouse;
 with "Config::Model::Role::NodeLoader";
@@ -92,6 +83,9 @@ has gist => (
 sub fetch_gist {
     my $self = shift;
     my $gist = $self->gist // '';
+    # handle hash or list element count
+    $gist =~ s!\@\{([\w -]+)}!$self->grab($1)->fetch_size!ge;
+    # handle element value
     $gist =~ s!{([\w -]+)}!$self->grab($1)->fetch // ''!ge;
     return $gist;
 }
@@ -176,6 +170,7 @@ sub create_element ($self, @args) {
                 object   => $self,
                 where    => $self->location || 'configuration root',
                 element  => $element_name,
+                autoadd  => $args{autoadd},
             );
         }
         else {
@@ -637,7 +632,7 @@ sub fetch_element ($self, @args) {
 
         # We also need to check if element name is matched by any of 'accept' parameters
         $self->accept_element($element_name) if $autoadd;
-        $self->create_element( name => $element_name, check => $check ) or return;
+        $self->create_element( name => $element_name, check => $check, autoadd => $autoadd ) or return;
     }
 
     # check level
@@ -673,8 +668,7 @@ sub fetch_element ($self, @args) {
         # FIXME elaborate more ? or include parameter description ??
         my $msg = "Element '$element_name' of node '". $self->name. "' is deprecated";
         if (not $self->was_element_warned($element_name)) {
-            if ($::_use_log4perl_to_warn) { $user_logger->warn($msg); }
-            else                          { warn("$msg\n"); }
+            $user_logger->warn($msg);
             $self->warn_element_done($element_name,1);
         }
         # this will also force a rewrite of the file even if no other
@@ -800,16 +794,11 @@ sub _get_accepted_data {
             my $dist = $tld->dld_best_distance($tld_arg);
             if ($dist < 3) {
                 my $best = $tld->dld_best_match($tld_arg);
-                if ($::_use_log4perl_to_warn) {
-                    $user_logger->warn("Warning: ".$self->location
+                $user_logger->warn(
+                    "Warning: ".$self->location
                     ." '$name' is confusingly close to '$best' (edit distance is $dist)."
-                    ." Is there a typo ?");
-                }
-                else {
-                    warn "Warning: ".$self->location
-                        ." '$name' is confusingly close to '$best' (edit distance is $dist)."
-                        ." Is there a typo ?\n";
-                }
+                    ." Is there a typo ?"
+                );
             }
 
         }
@@ -1135,7 +1124,7 @@ sub apply_fixes ($self, $filter='' ) {
     $fix_logger->debug( "apply fix started from ", $self->name );
     $scan->scan_node( undef, $self );
     $fix_logger->trace("apply fix done");
-    return;
+    return $self;
 }
 
 sub deep_check ($self, %args){
@@ -1176,18 +1165,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Class for configuration tree node
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Node - Class for configuration tree node
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -1315,9 +1292,10 @@ See below for details on element declaration.
 String used to construct a summary of the content of a node. This
 parameter is used by user interface to show users the gist of the
 content of this node. This parameter has no other effect. This string
-may contain element values in the form "C<{foo} or {bar}>". When
-constructing the gist, C<{foo}> is replaced by the value of element
-C<foo>. Likewise for C<{bar}>.
+may contain element values in the form "C<{foo} and
+@{a_hash_or_list}>". When constructing the gist, C<{foo}> is replaced
+by the value of element C<foo>, and C<@{a_hash_of_list}> is replaced
+by the number of elements of the hash or list element.
 
 =item B<level>
 
@@ -1407,7 +1385,8 @@ Example:
 
 The model snippet above ensures that C<Bug-Debian> is shown right after C<bug>.
 
-=for html <p>For more information, see <a href="http://ddumont.wordpress.com/2010/05/19/improve-config-upgrade-ep-02-minimal-model-for-opensshs-sshd_config/">this blog</a>.</p>
+=for html
+<p>For more information, see <a href="http://ddumont.wordpress.com/2010/05/19/improve-config-upgrade-ep-02-minimal-model-for-opensshs-sshd_config/">this blog</a>.</p>
 
 =back
 
@@ -1840,8 +1819,17 @@ deprecated elements or values. Return 1 if data needs to be saved.
 
 =head2 apply_fixes
 
+Parameters: C<[ Perl regexp filter ]>
+
 Scan the tree from this node and apply fixes that are attached to warning specifications.
-See C<warn_if_match> or C<warn_unless_match> in L<Config::Model::Value/>.
+See C<warn_if_match> or C<warn_unless_match> in L<Config::Model::Value/>. Return C<$self> since v2.151.
+
+Optional filter parameter limits the fix application to elements whose name matches the filter.
+
+For instance, using dpkg-control model, the following call apply fixes
+on C<Build-Depends> and C<Build-Depend-Indep> elements:
+
+  apply_fixes('Build')
 
 =head2 load
 
@@ -1978,17 +1966,5 @@ L<Config::Model::ListId>,
 L<Config::Model::CheckList>,
 L<Config::Model::WarpedNode>,
 L<Config::Model::Value>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

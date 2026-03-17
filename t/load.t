@@ -5,15 +5,20 @@ use Test::More;
 use Test::Exception;
 use Test::Differences;
 use Test::Memory::Cycle;
+use Test::Synopsis::Expectation;
 use Config::Model;
 use Config::Model::Tester::Setup qw/init_test/;
 use Test::Log::Log4perl;
 
 use strict;
 use warnings;
-$::_use_log4perl_to_warn = 1;
-
 use lib "t/lib";
+use utf8;
+
+
+Test::Log::Log4perl->ignore_priority("info");
+
+synopsis_ok('lib/Config/Model/Loader.pm');
 
 my ($model, $trace) = init_test();
 
@@ -27,6 +32,35 @@ binmode STDERR, ':encoding(UTF-8)';
 
 ok( 1, "compiled" );
 
+subtest "split command" => sub {
+    my @tests = (
+        [ qq!#"root comment " std_id:ab X=Bv -\na_string="titi and\nfoo"!, '#"root comment "', 'std_id:ab', 'X=Bv', '-', qq!a_string="titi and\nfoo"!],
+        [ q!std_id:~"/a\".*/"!, ],
+        [ q!std_id:~"a\".*"!, ],
+        [ q!a:~/b.*/.="\"a"! ],
+        [ q!a:~"b.*".="\"a"! ],
+        [ q!m:=a,"a b "! ],
+        [ q!a:=~"s/.*\".*/c/g"! ],
+        [ qq!#'root comment ' std_id:ab X=Bv -\na_string='titi and\nfoo'!, q!#'root comment '!, 'std_id:ab', 'X=Bv', '-', qq!a_string='titi and\nfoo'!],
+        [ q!std_id:~'/a\'.*/'!, ],
+        [ q!std_id:~'a\'.*'!, ],
+        [ q!a:~/b.*/.='\'a'! ],
+        [ q!a:~'b.*'.='\'a'! ],
+        [ q!m:=a,'a b '! ],
+        [ q!a:=~'s/.*\'.*/c/g'! ],
+    );
+
+    foreach my $subtest (@tests) {
+        my ( $str, @command ) = @$subtest;
+        push @command, $str unless @command;
+        my @res = Config::Model::Loader::_split_string($str);
+        my $label = length $str > 20 ? substr($str,0,20).'...' : $str;
+
+        eq_or_diff( \@res, \@command, "test _split_string with '$label'" );
+    }
+
+};
+
 subtest "mega regexp" => sub {
 
     my $big_list = '"dh-autoreconf","pkg-config","debhelper-compat (= 12)","dh-autotools (> 3)"';
@@ -39,11 +73,14 @@ subtest "mega regexp" => sub {
         [ 'a',                 [ 'a',  'x',  'x',           'x',            'x',  'x',      'x',        'x' ] ],
         [ '#C',                [ 'x',  'x',  'x',           'x',            'x',  'x',      'x',        'C' ] ],
         [ '#"m C"',            [ 'x',  'x',  'x',           'x',            'x',  'x',      'x',        '"m C"' ] ],
+        [ q!#'m C'!,           [ 'x',  'x',  'x',           'x',            'x',  'x',      'x',        "'m C'" ] ],
         [ 'a=b',               [ 'a',  'x',  'x',           'x',            '=',  'x',      'b',        'x' ] ],
         [ 'a=a~',              [ 'a',  'x',  'x',           'x',            '=',  'x',      'a~',       'x' ] ],
         [ 'a="~"',             [ 'a',  'x',  'x',           'x',            '=',  'x',      '"~"',      'x' ] ],
+        [ "a='~'",             [ 'a',  'x',  'x',           'x',            '=',  'x',      "'~'",      'x' ] ],
         [ 'a=.foo(bar)',       [ 'a',  'x',  'x',           'x',          '=.foo','bar',   'x',        'x' ] ],
         [ 'a=.foo("b r")',     [ 'a',  'x',  'x',           'x',          '=.foo','"b r"', 'x',        'x' ] ],
+        [ "a=.foo('b r')",     [ 'a',  'x',  'x',           'x',          '=.foo',"'b r'", 'x',        'x' ] ],
         [ 'a=.json(dir/foo.json/b/a)',
           [ 'a',  'x',  'x',           'x',          '=.json','dir/foo.json/b/a', 'x',        'x' ] ], # path + vector
         [ 'a-z=b',             [ 'a-z','x',  'x',           'x',            '=',  'x',      'b',        'x' ] ],
@@ -51,16 +88,18 @@ subtest "mega regexp" => sub {
         [ 'a.=b',              [ 'a',  'x',  'x',           'x',            '.=', 'x',      'b',        'x' ] ],
         [ "a.=\x{263A}",       [ 'a',  'x',  'x',           'x',            '.=', 'x',      "\x{263A}", 'x' ] ], # utf8 smiley
         [ 'a="b=c"',           [ 'a',  'x',  'x',           'x',            '=',  'x',      '"b=c"',    'x' ] ],
+        [ "a='b=c'",           [ 'a',  'x',  'x',           'x',            '=',  'x',      "'b=c'",    'x' ] ],
         [ 'a="b=\"c\""',       [ 'a',  'x',  'x',           'x',            '=',  'x',      '"b=\"c\""','x' ] ],
-        [ 'a=~/a/A/',          [ 'a',  'x',  'x',           'x',            '=~', 'x',      '/a/A/',    'x' ] ], # subst on value
+        [ 'a=~s/a/A/',         [ 'a',  'x',  'x',           'x',            '=~', 'x',      's/a/A/',   'x' ] ], # subst on value
         [ 'a=b#B',             [ 'a',  'x',  'x',           'x',            '=',  'x',      'b',        'B' ] ],
         [ 'a#B',               [ 'a',  'x',  'x',           'x',            'x',  'x',      'x',        'B' ] ],
         [ 'a#"b=c"',           [ 'a',  'x',  'x',           'x',            'x',  'x',      'x',        '"b=c"' ] ],
-
+        [ q!c=~'s/\s*".*//'!,  [ 'c',  'x',  'x',           'x',            '=~', 'x',      q!'s/\s*".*//'!, 'x' ]],
         #                              id_operation                        leaf_operation
         # string                 elt   op   (param)          id             op    (param)      val        note
         [ 'a:b=c',             [ 'a',  ':',  'x',           'b',            '=',  'x',      'c',        'x' ] ], # fetch and assign elt
         [ 'a:"b\""="\"c"',     [ 'a',  ':',  'x',           '"b\""',        '=',  'x',      '"\"c"',    'x' ] ],
+        [ q!a:'b\''='\'c'!,    [ 'a',  ':',  'x',           q!'b\''!,        '=',  'x',      q!'\'c'!,   'x' ] ],
         # fetch and assign elt with quotes
         [ 'a:~',               [ 'a',  ':~', 'x',           'x',            'x',  'x',      'x',        'x' ] ], # loop on matched value
         [ 'a:~.=b',            [ 'a',  ':~', 'x',           'x',            '.=', 'x',      'b',        'x' ] ], # loop on matched value
@@ -68,6 +107,9 @@ subtest "mega regexp" => sub {
         [ 'a:~"b.*"',          [ 'a',  ':~', 'x',           '"b.*"',        'x',  'x',      'x',        'x' ] ], # loop on matched value
         [ 'a:~/b.*/.="\"a"',   [ 'a',  ':~', 'x',           '/b.*/',        '.=', 'x',      '"\"a"',    'x' ] ], # loop on matched value and append
         [ 'a:~"b.*".="\"a"',   [ 'a',  ':~', 'x',           '"b.*"',        '.=', 'x',      '"\"a"',    'x' ] ], # loop on matched value and append
+        [ q!a:~'b.*'!,         [ 'a',  ':~', 'x',           "'b.*'",        'x',  'x',      'x',        'x' ] ], # loop on matched value
+        [ q!a:~/b.*/.='\'a'!,  [ 'a',  ':~', 'x',           '/b.*/',        '.=', 'x',      q!'\'a'!,   'x' ] ], # loop on matched value and append
+        [ q!a:~'b.*'.='\'a'!,  [ 'a',  ':~', 'x',           "'b.*'",        '.=', 'x',      q!'\'a'!,   'x' ] ], # loop on matched value and append
         [ 'a:~/^\w+$/',        [ 'a',  ':~', 'x',           '/^\w+$/',      'x',  'x',      'x',        'x' ] ], # loop on matched value
         [ 'a:="dod@foo.com"',  [ 'a',  ':=', 'x',           '"dod@foo.com"','x',  'x',      'x',        'x' ] ], # set list
         [ 'a:=b,c,d',          [ 'a',  ':=', 'x',           'b,c,d',        'x',  'x',      'x',        'x' ] ], # set list
@@ -75,6 +117,9 @@ subtest "mega regexp" => sub {
         [ 'm:=a,"a b "',       [ 'm',  ':=', 'x',           'a,"a b "',     'x',  'x',      'x',        'x' ] ], # set list with quotes
         [ 'm:="a b ",c',       [ 'm',  ':=', 'x',           '"a b ",c',     'x',  'x',      'x',        'x' ] ], # set list with quotes
         [ 'm:="a b","c d"',    [ 'm',  ':=', 'x',           '"a b","c d"',  'x',  'x',      'x',        'x' ] ], # set list with quotes
+        [ q!m:=a,'a b '!,      [ 'm',  ':=', 'x',           "a,'a b '",     'x',  'x',      'x',        'x' ] ], # set list with quotes
+        [ q!m:='a b ',c!,      [ 'm',  ':=', 'x',           "'a b ',c",     'x',  'x',      'x',        'x' ] ], # set list with quotes
+        [ q!m:='a b','c d'!,   [ 'm',  ':=', 'x',           q!'a b','c d'!, 'x',  'x',      'x',        'x' ] ], # set list with quotes
         [ "m:=$big_list",      [ 'm',  ':=', 'x',           $big_list,      'x',  'x',      'x',        'x' ] ], # set list with quotes
         [ 'm=a,"a b "',        [ 'm',  'x',  'x',           'x',            '=',  'x',      'a,"a b "', 'x' ] ],
 
@@ -104,24 +149,44 @@ subtest "mega regexp" => sub {
         [ 'a:~/b/<c',          [ 'a',  ':~', 'x',           '/b/',          '<',  'x',      'c',        'x' ] ], # insert at matching value
 
         # function call
-        [ 'a:.b("foo(a > b)")',[ 'a',  ':.b','"foo(a > b)"','x',            'x',  'x',      'x',        'x' ] ], # tricky value with ()
+        [ 'a:.b("foo(a > b)")', [ 'a',  ':.b','"foo(a > b)"','x',            'x',  'x',      'x',        'x' ] ], # tricky value with ()
+        [ q!a:.b('foo(a > b)')!,[ 'a',  ':.b',"'foo(a > b)'",'x',            'x',  'x',      'x',        'x' ] ], # tricky value with ()
+        [ 'a:.b("bar","foo(a > b)")', [ 'a',  ':.b','"bar","foo(a > b)"','x','x',  'x',      'x',        'x' ] ], # tricky value with ()
+        [ q!a:.b('bar','foo(a > b)')!,[ 'a',  ':.b',"'bar','foo(a > b)'",'x','x',  'x',      'x',        'x' ] ], # tricky value with ()
     );
 
     foreach my $subtest (@regexp_test) {
         my ( $cmd, $ref ) = @$subtest;
-        my $res = Config::Model::Loader::_split_cmd($cmd);
+        my @res = Config::Model::Loader::_split_cmd($cmd);
 
         #print Dumper $res,"\n";
-        foreach (@$res) {
+        foreach (@res) {
             $_ = 'x' unless defined $_;
         }
-        eq_or_diff( $res, $ref, "test _split_cmd with '$cmd'" );
+        eq_or_diff( \@res, $ref, "test _split_cmd with '$cmd'" );
     }
 };
 
+$model->load('Master' => 'dump_load_model.pl',);
+
+$model->augment_config_class(
+    name => 'Master',
+    element => [
+        # uses to test .set_to_std_value
+        two => {
+            type => 'leaf',
+            value_type => 'uniline',
+            compute => {
+                allow_override => 1,
+                use_eval => 1,
+                formula => '1+1;'
+            }
+        },
+    ]
+);
+
 my $inst = $model->instance(
     root_class_name => 'Master',
-    model_file      => 'dump_load_model.pl',
     instance_name   => 'test1'
 );
 ok( $inst, "created dummy instance" );
@@ -497,6 +562,21 @@ subtest "test sort and insort" => sub {
     eq_or_diff( [$ohon->fetch_all_indexes()],[qw/d g/], "check sorted keys") ;
 };
 
+subtest "test list.ensure" => sub {
+    my $lista = $root->fetch_element('lista');
+    $root->load('lista=a,b,c,d');
+    my @expect = $lista->fetch_all_values;
+
+    $root->load( qq!lista:.ensure(b)! );
+    eq_or_diff( [ $lista->fetch_all_values ], \@expect, "ensure(b) -> no change" );
+
+    $root->load( qq!lista:.ensure(b2)! );
+    eq_or_diff( [ $lista->fetch_all_values ], [qw/a b b2 c d/], "ensure(b2) -> inserted and sorted");
+
+    $root->load( qq!lista:.ensure(c2,f4,b2,c2,"z z")! );
+    eq_or_diff( [ $lista->fetch_all_values ], [qw/a b b2 c c2 d f4/, "z z"], "ensure several values");
+};
+
 subtest "test combination of annotation plus load and some utf8" => sub {
     my $step = 'std_id#std_id_note ! std_id:ab#std_id_ab_note X=Bv X#X_note 
       - std_id:bc X=Av X#X2_note '
@@ -550,13 +630,18 @@ subtest "test element with embedded dash" => sub {
     is( $root->grab_value('std_id:ab X-Y-Z'), "Av", "check load grab of X-Y-Z" );
 };
 
-subtest "test deep copy" => sub {
+subtest "test deep copy and rename" => sub {
     $root->load("std_id:.copy(ab,copy)");
     is( $root->grab_value('std_id:copy X-Y-Z'), "Av", "check hash copy" );
 
-    is( $root->grab_value('lista:5'), 'e' , "list copy" );
+    $root->load("std_id:.rename(copy,copy2)");
+    ok( ! $root->grab('std_id')->exists('copy'), "check hash rename: old key is gone" );
+    is( $root->grab_value('std_id:copy2 X-Y-Z'), "Av", "check hash rename: new key is found" );
+
+    $root->load('lista=a,b,c,d,e,f');
+    is( $root->grab_value('lista:5'), 'f' , "list copy" );
     $root->load("lista:.copy(1,5)");
-    is( $root->grab_value('lista:5'), 'b2' , "list copy" );
+    is( $root->grab_value('lista:5'), 'b' , "list copy" );
 };
 
 subtest "test clear instruction" => sub {
@@ -568,9 +653,9 @@ subtest "test clear instruction" => sub {
 };
 
 subtest "test load data from file" => sub {
-    $root->load("a_string=.file(README.md)");
-    like( $root->grab_value('a_string'), qr/# What is Config-Model project/,
-          "slurp README.md file");
+    $root->load("a_string=.file(README.org)");
+    like( $root->grab_value('a_string'), qr/\* What is Config-Model project/,
+          "slurp README.org file");
 };
 
 subtest "test load data from JSON file" => sub {
@@ -597,9 +682,22 @@ subtest "test load data from JSON file" => sub {
         "throws error on dummy json file: check reported command";
 };
 
+subtest "test load data from JSON utf8 file" => sub {
+    $inst->clear_changes;
+
+    $root->load('a_string=.json("t/lib/load-data.json/utf8-value")');
+    is( $root->grab_value('a_string'), "30€ de thé", "extract utf-8 data from json file");
+};
+
 subtest "test load data from YAML file" => sub {
     $root->load('a_string=.yaml("t/lib/load-data.yaml/0/foo/bar")');
     is( $root->grab_value('a_string'), "bar yaml value", "extract data from yaml file");
+};
+
+# Mostly target dist.ini files for Perl modules using Dist::Zilla
+subtest "test load data from INI file" => sub {
+    $root->load('a_string=.ini("t/lib/load-data.ini/foo/bar")');
+    is( $root->grab_value('a_string'), "bar INI value", "extract data from INI file");
 };
 
 subtest "load data from environment" => sub {
@@ -619,6 +717,13 @@ subtest "test some errors cases" => sub {
     foreach my $bad ( sort keys %errors ) {
         throws_ok { $root->load($bad) } $errors{$bad}, "Check error for load('$bad')";
     }
+};
+
+subtest "test .set_to_std_value" => sub {
+    $root->load('two=3');
+    is($root->grab_value("two"), 3, "check two value (wrong)");
+    $root->load('two=.set_to_std_value()');
+    is($root->grab_value("two"), 2, "check two value (correct)");
 };
 
 memory_cycle_ok( $model, "check memory cycles" );

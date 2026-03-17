@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::AnyId 2.145;
+package Config::Model::AnyId;
 
 use 5.020;
 
@@ -515,12 +506,7 @@ sub check_content ($self, %args) {
 
         if (not $silent) {
             for ( @warn ) {
-                if ($::_use_log4perl_to_warn) {
-                    $user_logger->warn( "Warning in '" . $self->location_short . "': $_" )
-                }
-                else {
-                    warn( "Warning in '" . $self->location_short . "': $_\n" )
-                }
+                $user_logger->warn( "Warning in '" . $self->location_short . "': $_" )
             }
         }
 
@@ -592,12 +578,7 @@ sub check_idx ($self, @args) {
 
     if (@warn and not $silent and $check ne 'no') {
         for (@warn) {
-            if ($::_use_log4perl_to_warn) {
-                $user_logger->warn( "Warning in '" . $self->location_short . "': $_" );
-            }
-            else {
-                warn( "Warning in '" . $self->location_short . "': $_\n" )
-            }
+            $user_logger->warn( "Warning in '" . $self->location_short . "': $_" );
         }
     }
 
@@ -793,8 +774,12 @@ sub set ($self, $path, @args) {
     return $self->fetch_with_id($item)->set( $new_path, @args );
 }
 
-sub copy {
-    my ( $self, $from, $to ) = @_;
+sub copy ( $self, $from, $to ) {
+
+    Config::Model::Exception::User->throw(
+        object  => $self,
+        message => "move: unknow from key $from"
+    ) unless $self->exists($from);
 
     my $from_obj = $self->fetch_with_id($from);
     my $ok       = $self->check_idx($to);
@@ -824,6 +809,11 @@ sub fetch_all {
     my $self = shift;
     my @keys = $self->fetch_all_indexes;
     return map { $self->fetch_with_id($_); } @keys;
+}
+
+sub fetch_size {
+    my $self = shift;
+    return scalar $self->fetch_all_indexes;
 }
 
 sub fetch ($self, @args) {
@@ -889,10 +879,10 @@ sub fetch_all_indexes {
     return $self->_fetch_all_indexes;
 }
 
+# TODO: remove in 2027
 sub get_all_indexes {
     my $self = shift;
-    carp "get_all_indexes is deprecated. use fetch_all_indexes";
-    return $self->fetch_all_indexes;
+    croak "get_all_indexes is obsolete. use fetch_all_indexes";
 }
 
 sub children {
@@ -1065,18 +1055,6 @@ __PACKAGE__->meta->make_immutable;
 # ABSTRACT: Base class for hash or list element
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::AnyId - Base class for hash or list element
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -1270,6 +1248,14 @@ When the hash contains leaves, you can also use:
        def_1 => 'def_1 stuff',
        def_2 => 'def_2 stuff'
    }
+
+With a list, you must use numeric keys:
+
+   default_with_init => {
+       0 => 'def_1 stuff',
+       1 => 'def_2 stuff'
+   },
+
 
 =item migrate_keys_from
 
@@ -1585,6 +1571,11 @@ copied from one node to another.
 
 Returns an array containing all elements held by the hash or list.
 
+=head2 fetch_size
+
+Return the number of elements of the array or the number of keys of
+the hash. (from v2.157)
+
 =head2 fetch_value
 
 Parameters: C<< ( idx => ..., mode => ..., check => ...) >>
@@ -1711,17 +1702,5 @@ L<Config::Model::HashId>,
 L<Config::Model::ListId>,
 L<Config::Model::CheckList>,
 L<Config::Model::Value>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

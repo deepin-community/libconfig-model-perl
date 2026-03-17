@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Loader 2.145;
+package Config::Model::Loader;
 
 use Carp;
 use strict;
@@ -17,9 +8,10 @@ use Mouse;
 
 use Config::Model::Exception;
 use Log::Log4perl qw(get_logger :levels);
-use JSON;
 use Path::Tiny;
-use YAML::Tiny;
+
+use feature qw/postderef signatures/;
+no warnings qw/experimental::postderef experimental::signatures/;
 
 my $logger = get_logger("Loader");
 my $verbose_logger = get_logger("Verbose.Loader");
@@ -41,8 +33,8 @@ has instance => (
     lazy_build => 1,
 );
 
-sub _build_instance {
-    return $_[0]->start_node->instance;
+sub _build_instance ($self) {
+    return $self->start_node->instance;
 }
 
 my %log_dispatch = (
@@ -66,13 +58,43 @@ sub _log_cmd {
     my $str = ref $cmd eq 'ARRAY' ? "@$cmd"
         : ref $cmd ? $$cmd : $cmd;
     $verbose_logger->info("command '$str': $message");
+    return;
 }
 
-sub load {
-    my $self = shift;
+sub _split_string ($str) {
+    # do a split on ' ' but take quoted string into account
+    return (
+        $str =~ m/
+         (         # begin of *one* command
+          (?:        # group parts of a command (e.g ...:...=... )
+           [^\s"']+  # match anything but a space and a quote
+           (?:        # begin quoted group
+             "         # begin of a string
+              (?:        # begin group
+                \\"       # match an escaped quote
+                |         # or
+                [^"]      # anything but a quote
+              )*         # lots of time
+             "         # end of the string
+           )          # end of quoted group
+           ?          # match if I got more than one group
+           (?:        # begin quoted group
+             '         # begin of a string
+              (?:        # begin group
+                \\'       # match an escaped quote
+                |         # or
+                [^']      # anything but a quote
+              )*         # lots of time
+             '         # end of the string
+           )          # end of quoted group
+           ?          # match if I got more than one group
+          )+      # can have several parts in one command
+         )        # end of *one* command
+        /gx    # 'g' means that all commands are fed into @command array
+    );         #"asdf ;
+}
 
-    my %args = @_;
-
+sub load ($self, %args) {
     my $node = $self->start_node;
 
     my $steps = delete $args{steps} // delete $args{step};
@@ -93,26 +115,7 @@ sub load {
     # accept commands
     my $huge_string = ref $steps ? join( ' ', @$steps ) : $steps;
 
-    # do a split on ' ' but take quoted string into account
-    my @command = (
-        $huge_string =~ m/
-         (         # begin of *one* command
-          (?:        # group parts of a command (e.g ...:...=... )
-           [^\s"]+  # match anything but a space and a quote
-           (?:        # begin quoted group
-             "         # begin of a string
-              (?:        # begin group
-                \\"       # match an escaped quote
-                |         # or
-                [^"]      # anything but a quote
-              )*         # lots of time
-             "         # end of the string
-           )          # end of quoted group
-           ?          # match if I got more than one group
-          )+      # can have several parts in one command
-         )        # end of *one* command
-        /gx    # 'g' means that all commands are fed into @command array
-    );         #"asdf ;
+    my @command = _split_string($huge_string);
 
     #print "command is ",join('+',@command),"\n" ;
 
@@ -159,7 +162,22 @@ sub _split_cmd {
     my $cmd = shift;
     $logger->trace("split on: ->$cmd<-");
 
-    my $quoted_string = qr/"(?: \\" | [^"] )* "/x;    # quoted string
+    my $quoted_string = qr/
+                              (?: "(?: \\" | [^"] )* ") | # double quoted string
+                              (?: '(?: \\' | [^'] )* ')   # single quoted string
+                          /x;
+
+    # capture parameters between ( )
+    my $function_args = qr/(?:
+                               \(                          # opening (
+                               (
+                                   (?:
+                                       $quoted_string ,? | # quoted string, maybe with a comma
+                                       [^)"']+             # or any other char expect ) or a quoted string
+                                   )+                      # many times
+                               )
+                               \)                          # closing )
+                           )/x;
 
     # do a split on ' ' but take quoted string into account
     my @command = (
@@ -168,7 +186,7 @@ sub _split_cmd {
 	 (?:
             (:~|:-[=~]?|:=~|:\.\w+|:[=<>@]?|~)       # action
             (?:
-                  (?: \( ( $quoted_string | [^)]+ ) \) )  # capture parameters between ( )
+                  $function_args  # capture parameters between ( )
                 | (
                     /[^/]+/      # regexp
                     | (?:
@@ -181,11 +199,11 @@ sub _split_cmd {
 	 (?:
             (=~|\.=|=\.\w+|[=<>])          # apply regexp or assign or append
             (?:
-                  (?: \( ( $quoted_string | [^)]+ ) \) )  # capture parameters between ( )
+                  $function_args  # capture parameters between ( )
                 | (
                     (?:
                       $quoted_string
-                     | [^#\s]                # or non whitespace
+                     | [^#\s"']              # or non whitespace
                     )+                       # many
                   )
 	        )?
@@ -211,7 +229,7 @@ sub _split_cmd {
             error   => "Syntax error: spurious char at command end: '$leftout'. Did you forget double quotes ?"
         );
     }
-    return wantarray ? @command : \@command;
+    return @command;
 }
 
 my %load_dispatch = (
@@ -379,6 +397,7 @@ sub _set_note {
     my ($self, $target, $cmd, $note) = @_;
     $self->_log_cmd($cmd, "Setting %name annotation to %qs", $target, $note);
     $target->annotation($note);
+    return;
 }
 
 
@@ -400,6 +419,7 @@ sub _load_note {
             );
         }
     }
+    return;
 }
 
 sub _walk_node {
@@ -425,6 +445,8 @@ sub _walk_node {
     return $self->_load( $new_node, $check, $cmdref );
 }
 
+# unquote modify the passed values
+## no critic (Subroutines::RequireArgUnpacking)
 sub unquote {
     for (@_) {
         if (defined $_) {
@@ -433,6 +455,7 @@ sub unquote {
             s/^"// && s/"$// && s!\\"!"!g;
         }
     }
+    return;
 }
 
 sub _load_check_list {
@@ -471,7 +494,7 @@ sub _load_check_list {
         command => join( '', map { $_ || '' } @$inst ),
         error   => "Wrong assignment with '$a_str' on check_list"
     );
-
+    return;
 }
 
 {
@@ -485,6 +508,7 @@ sub _load_check_list {
             ':.insert_at'     => sub { $_[1]->insert_at( @_[ 5 .. $#_ ] ); return 'ok'; },
             ':.insort'        => sub { $_[1]->insort( @_[ 5 .. $#_ ] ); return 'ok'; },
             ':.insert_before' => \&_insert_before,
+            ':.ensure'        => \&_ensure_list_value,
         },
         'list_*' => {
             ':.copy'          => sub { $_[1]->copy( $_[5], $_[6] ); return 'ok'; },
@@ -499,6 +523,7 @@ sub _load_check_list {
         'hash_*' => {
             ':.sort'          => sub { $_[1]->sort; return 'ok'; },
             ':.copy'          => sub { $_[1]->copy( $_[5], $_[6] ); return 'ok'; },
+            ':.rename'        => sub { $_[1]->move( $_[5], $_[6] ); return 'ok'; },
             ':.clear'         => sub { $_[1]->clear; return 'ok';},
         },
         # part of list or hash. leaf element have their own dispatch table
@@ -507,7 +532,7 @@ sub _load_check_list {
         leaf => {
             ':.rm_value' => \&_remove_by_value,
             ':.rm_match' => \&_remove_matched_value,
-            ':.subtitute' => \&_substitute_value,
+            ':.substitute' => \&_substitute_value,
         },
         fallback => {
             ':.rm' => \&_remove_by_id,
@@ -516,10 +541,10 @@ sub _load_check_list {
     );
 
     my %equiv = (
-        'hash_*' => { qw/:@ :.sort/},
+        'hash_*' => { qw/:@ :.sort :.move :.rename/},
         list_leaf => { qw/:@ :.sort :< :.push :> :.unshift/ },
         # fix for cme gh#2
-        leaf => { qw/:-= :.rm_value :-~ :.rm_match :=~ :.subtitute/ },
+        leaf => { qw/:-= :.rm_value :-~ :.rm_match :=~ :.substitute/ },
         fallback => { qw/:- :.rm ~ :.rm/ },
     );
 
@@ -557,6 +582,17 @@ sub _insert_before {
     return 'ok';
 }
 
+sub _ensure_list_value {
+    my ( $self, $element, $check, $inst, $cmdref, @values ) = @_;
+    my %content = map { $_ => 1 } $element->fetch_all_values;
+    foreach my $one_value (@values) {
+        next if $content{$one_value};
+        $element->insort($one_value);
+        $content{$one_value} = 1;
+    }
+
+    return 'ok';
+}
 sub _remove_by_id {
     my ( $self, $element, $check, $inst, $cmdref, $id ) = @_;
     $logger->debug("_remove_by_id: removing id '$id'");
@@ -564,11 +600,29 @@ sub _remove_by_id {
     return 'ok';
 }
 
+sub _lazy_load ($function, $module) {
+    my $file = ($module =~ s!::!/!gr).".pm";
+    eval { require $file };
+    if ($@) {
+        die "Error: Loader function $function requires $module module. Please install this module.\n"
+    }
+    return;
+}
+
+sub __load_json_file ($file) {
+    _lazy_load(".json()", "JSON");
+    JSON->import();
+    # utf8 decode is done by JSON module, so slurp_raw must be used
+    return decode_json($file->slurp_raw);
+}
+
 sub _load_json_vector_data {
     my ( $self, $element, $check, $inst, $cmdref, $vector ) = @_;
     $logger->debug("_load_json_vector_data: loading '$vector'");
     my ($file, @vector) = $self->__get_file_from_vector($element,$inst,$vector);
-    my $data = decode_json($file->slurp_utf8);
+
+    my $data = __load_json_file($file);
+
     # test for diff before clobbering ? What about deep data ???
     $element->load_data(
         data => __data_from_vector($data, @vector),
@@ -619,7 +673,7 @@ sub _substitute_value {
 
 sub _insort_hash_of_node {
     my ( $self, $element, $check, $inst, $cmdref, $id ) = @_;
-    my $node = $element->insort($_[5]);
+    my $node = $element->insort($id);
     $logger->debug("_insort_hash_of_node: calling _load on node id $id");
     return $self->_load( $node, $check, $cmdref );
 }
@@ -710,6 +764,7 @@ sub _load_list {
             . "element type: $elt_type, cargo_type: $cargo_type"
     );
 
+    return;
 }
 
 sub _load_hash {
@@ -824,6 +879,7 @@ sub _load_hash {
             error   => "Hash load with '$action' on unexpected " . "cargo_type: $cargo_type"
         );
     }
+    return;
 }
 
 sub _load_leaf {
@@ -879,6 +935,7 @@ sub _load_leaf {
             . "(element '"
             . $element->name . "')"
     );
+    return;
 }
 
 # sub is called with  ( $self, $element, $value, $check, $instructions )
@@ -888,8 +945,11 @@ my %load_value_dispatch = (
     '.=' => \&_append_value,
     '=~' => \&_apply_regexp_on_value,
     '=.file' => \&_store_file_in_value,
+    '=.set_to_std_value' => \&_set_to_standard_value,
+    '=.set_to_standard_value' => \&_set_to_standard_value,
     '=.json' => \&_store_json_vector_in_value,
     '=.yaml' => \&_store_yaml_vector_in_value,
+    '=.ini' => \&_store_ini_vector_in_value,
     '=.env' => sub { $_[1]->store( value => $ENV{$_[2]}, check => $_[3] ); return 'ok'; },
 );
 
@@ -908,7 +968,7 @@ sub _append_value {
         $cmd, 'Appending %qs to %leaf. Result is %qs.',
         $value, $element, $next
     );
-    $element->store( value => $next, check => $check );
+    return $element->store( value => $next, check => $check );
 }
 
 sub _apply_regexp_on_value {
@@ -932,27 +992,36 @@ sub _apply_regexp_on_value {
                     . $element->name . "' : $res"
                 );
         }
-        $element->store( value => $orig, check => $check );
+        return $element->store( value => $orig, check => $check );
     }
     else {
         $self->_log_cmd(
             $cmd, "Not applying regexp %qs on undefined value of %leaf.",
             $value, $element, $orig
         );
+        return;
     }
+}
+
+sub _set_to_standard_value {
+    my ( $self, $element, $value, $check, $instructions, $cmd ) = @_;
+    # check value is done by store
+    return $element->store($element->_fetch_std_no_check);
 }
 
 sub _store_file_in_value {
     my ( $self, $element, $value, $check, $instructions, $cmd ) = @_;
 
     if ($value eq '-') {
+        ## no critic (InputOutput::ProhibitExplicitStdin)
+        # user called a load function like .file(-), cannot use ARGV
         $element->store( value => join('',<STDIN>), check => $check );
         return 'ok';
     }
 
     my $path = $element->root_path->child($value);
     if ($path->is_file) {
-        $element->store( value => $path->slurp_utf8, check => $check );
+        return $element->store( value => $path->slurp_utf8, check => $check );
     }
     else {
         Config::Model::Exception::Load->throw(
@@ -961,6 +1030,7 @@ sub _store_file_in_value {
             error => "cannot read file $value"
         );
     }
+    return;
 }
 
 sub __data_from_vector {
@@ -1003,8 +1073,8 @@ sub __get_file_from_vector {
 sub _store_json_vector_in_value {
     my ( $self, $element, $value, $check, $instructions, $cmd ) = @_;
     my ($file, @vector) = $self->__get_file_from_vector($element,$instructions,$value);
-    my $data = decode_json($file->slurp_utf8);
-    $element->store(
+    my $data = __load_json_file($file);
+    return $element->store(
         value => __data_from_vector($data, @vector),
         check => $check
     );
@@ -1013,8 +1083,24 @@ sub _store_json_vector_in_value {
 sub _store_yaml_vector_in_value {
     my ( $self, $element, $value, $check, $instructions, $cmd ) = @_;
     my ($file, @vector) = $self->__get_file_from_vector($element,$instructions,$value);
-    my $data = YAML::Tiny->read($file->stringify);
-    $element->store(
+    _lazy_load(".yaml()", "YAML::PP");
+    my @data = YAML::PP->new()->load_file($file->stringify);
+    return $element->store(
+        value => __data_from_vector(\@data, @vector),
+        check => $check
+    );
+}
+
+sub _store_ini_vector_in_value {
+    my ( $self, $element, $value, $check, $instructions, $cmd ) = @_;
+    _lazy_load(".ini()", "Config::INI::Reader");
+
+    my ($file, @vector) = $self->__get_file_from_vector($element,$instructions,$value);
+    if (scalar @vector > 2) {
+        die "$element calls .ini with too many elements in subpath @vector. Max is 2\n";
+    }
+    my $data = Config::INI::Reader->read_file($file->stringify);
+    return $element->store(
         value => __data_from_vector($data, @vector),
         check => $check
     );
@@ -1054,18 +1140,6 @@ sub _load_value {
 # ABSTRACT: Load serialized data into config tree
 
 __END__
-
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Loader - Load serialized data into config tree
-
-=head1 VERSION
-
-version 2.145
 
 =head1 SYNOPSIS
 
@@ -1120,28 +1194,20 @@ version 2.145
      listb:0=foo listb:1=baz';
  $root->load( steps => $steps );
 
- print $root->describe,"\n" ;
- # name         value        type         comment
- # foo          FOO          string
- # bar          [undef]      string
- # hash_of_nodes <Foo>        node hash    keys: "en" "fr"
- # lista        foo,bar,baz  list
- # listb        foo,baz      list
-
+ my $s = $root->fetch_element_value('foo');      # => is 'FOO'
+ $s = $root->grab_value('hash_of_nodes:en foo'); # => is 'hello'
+ $s = $root->grab_value('lista:1');              # => is 'bar'
+ $s = $root->grab_value('lista:2');              # => is 'baz'
 
  # delete some data
  $root->load( steps => 'lista~2' );
 
- print $root->describe(element => 'lista'),"\n" ;
- # name         value        type         comment
- # lista        foo,bar      list
+ $s = $root->grab_value('lista:2');              # => is undef
 
  # append some data
  $root->load( steps => q!hash_of_nodes:en foo.=" world"! );
 
- print $root->grab('hash_of_nodes:en')->describe(element => 'foo'),"\n" ;
- # name         value        type         comment
- # foo          "hello world" string
+ $s = $root->grab_value('hash_of_nodes:en foo'); # => is 'hello world'
 
 =head1 DESCRIPTION
 
@@ -1221,6 +1287,7 @@ command specified below, e.g C</a_string="foo bar">
 
 =over
 
+
 =item xxx:yy
 
 Go down using C<xxx> element and id C<yy> (For C<hash> or C<list>
@@ -1229,8 +1296,9 @@ real C<\n> (LF in Unix).
 
 =item xxx:.foreach_match(yy) or xxx:~yy
 
-Go down using C<xxx> element and loop over the ids that match the regex
-specified by C<yy>. (For C<hash>).
+Go down using C<xxx> element and loop over the ids that match the
+regex specified by C<yy>. (For C<hash> only. This does B<not> apply to
+C<list> elements).
 
 For instance, with C<OpenSsh> model, you could do
 
@@ -1292,7 +1360,7 @@ Sort the list
 
 Insert C<zz> value on C<xxx> list before B<index> C<yy>.
 
-=item xxx:.insert_before(yy,zz)
+=item  xxx:.insert_before(yy,zz)
 
 Insert C<zz> value on C<xxx> list before B<value> C<yy>.
 
@@ -1321,6 +1389,13 @@ is preserved. Note that all keys are sorted once this instruction is
 called. Putting key order aside, C<xxx:.insort(zz,vv)> has the
 same effect as C<xxx:zz=vv> instruction.
 
+=item xxx:.ensure(zz,...)
+
+Ensure that list C<xxx> contains value C<zz>. If value C<zz> is
+already stored in C<xxx> list, this function does nothing. In the
+other case, value C<zz> is inserted in alphabetical order. This
+function accepts a list of values separated by a comma.
+
 =item xxx:=z1,z2,z3
 
 Set list element C<xxx> to list C<z1,z2,z3>. Use C<,,> for undef
@@ -1339,6 +1414,14 @@ Using C<xxx:~/yy/=zz> is also possible.
 
 copy item C<yy> in C<zz> (hash or list).
 
+=item xxx:.rename(yy,zz)
+
+rename item C<yy> in C<zz> (hash).
+
+=item xxx:.move(yy,zz)
+
+Alias to rename.
+
 =item xxx:.json("path/to/file.json/foo/bar")
 
 Store C<bar> content in array or hash. This should be used to store
@@ -1347,6 +1430,8 @@ hash or list of values.
 You may store deep data structure. In this case, make sure that the
 structure of the loaded data matches the structure of the model. This
 won't happen by chance.
+
+Note that L<JSON> module must be installed to use this function.
 
 =item xxx:.clear
 
@@ -1387,11 +1472,17 @@ Undef element C<xxx>
 
 Appends C<zzz> value to current value (valid for C<leaf> elements).
 
+=item xxx=.set_to_standard_value()
+
+Set to standard value. Standard value is like a suggested value which
+requires an action from user to be set. C<set_to_std_value> is
+also accepted.
+
 =item xxx=.file(yyy)
 
 Store the content of file C<yyy> in element C<xxx>.
 
-Store STDIn in value xxx when C<yyy> is '-'.
+Store STDIN in value xxx when C<yyy> is '-'.
 
 =item xxx=.json(path/to/data.json/foo/bar)
 
@@ -1427,6 +1518,25 @@ For instance, if C<data.yaml> contains:
 The instruction C<baz=.yaml(data.yaml/0/foo/bar)> stores C<42> in
 C<baz> element.
 
+Note that L<YAML::PP> module must be installed to use this function.
+
+=item xxx=.ini(path/to/data.ini/foo/bar)
+
+Open file C<data.ini> and store value from INI data extracted with
+C<foo/bar> subpath. INI files contains sections and parameter, so the
+subpath must contains at most 2 elements.
+
+For instance, if C<data.ini> contains:
+
+  [foo]
+    bar = 42
+
+The instruction C<baz=.ini(data.ini/foo/bar)> stores C<42> in
+C<baz> element.
+
+Note that L<Config::INI::Reader> module must be installed to use this
+function.
+
 =item xxx=.env(yyy)
 
 Store the content of environment variable C<yyy> in element C<xxx>.
@@ -1449,9 +1559,11 @@ C<foo#comment:bar> is B<not> valid.
 
 =head2 Quotes
 
-You can surround indexes and values with double quotes. E.g.:
+You can surround indexes and values with single or double quotes. E.g.:
 
-  a_string="\"foo\" and \"bar\""
+  a_string='"foo" and "bar"'
+
+Single quotes were added in version 2.153.
 
 =head1 Examples
 
@@ -1521,17 +1633,5 @@ Dominique Dumont, (ddumont at cpan dot org)
 =head1 SEE ALSO
 
 L<Config::Model>,L<Config::Model::Node>,L<Config::Model::Dumper>
-
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut

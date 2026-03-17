@@ -1,13 +1,4 @@
-#
-# This file is part of Config-Model
-#
-# This software is Copyright (c) 2005-2021 by Dominique Dumont.
-#
-# This is free software, licensed under:
-#
-#   The GNU Lesser General Public License, Version 2.1, February 1999
-#
-package Config::Model::Role::NodeLoader 2.145;
+package Config::Model::Role::NodeLoader;
 
 # ABSTRACT: Load Node element in configuration tree
 
@@ -42,18 +33,6 @@ sub load_node {
 
 __END__
 
-=pod
-
-=encoding UTF-8
-
-=head1 NAME
-
-Config::Model::Role::NodeLoader - Load Node element in configuration tree
-
-=head1 VERSION
-
-version 2.145
-
 =head1 SYNOPSIS
 
  $self->load_node( config_class_name => "...", %other_args);
@@ -72,16 +51,6 @@ override class is loaded and used to create the node.
 Creates a node object using all the named parameters passed to load_node. One of these
 parameter must be C<config_class_name>
 
-=head1 AUTHOR
-
-Dominique Dumont
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is Copyright (c) 2005-2021 by Dominique Dumont.
-
-This is free software, licensed under:
-
-  The GNU Lesser General Public License, Version 2.1, February 1999
 
 =cut
+
